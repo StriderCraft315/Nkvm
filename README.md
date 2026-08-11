@@ -24,7 +24,7 @@ Full-featured QEMU/KVM virtual server management panel built with Node.js, Expre
 
 ```bash
 git clone https://github.com/nobita329/vpanel-pro.git && cd vpanel-pro
-sudo bash install.sh --admin-pass 'your-secure-password'
+sudo bash install.sh --admin-pass 'admin'
 ```
 
 Installer:
