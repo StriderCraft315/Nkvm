@@ -1,0 +1,102 @@
+<%- include('../partials/head', { title: 'User Management' }) %>
+<%- include('../partials/ambient') %>
+<%- include('../partials/topbar') %>
+<%- include('../partials/sidebar') %>
+<div class="main">
+  <div class="flex-between mb-3">
+    <h2 style="font-size:22px">User Management</h2>
+    <button class="btn btn-primary" onclick="openCreate()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Create User
+    </button>
+  </div>
+
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>User</th><th>Role</th><th>Servers</th><th>Status</th><th>2FA</th><th>Last Login</th><th class="right">Actions</th></tr></thead>
+        <tbody>
+        <% for (const u of users) { %>
+          <tr>
+            <td>
+              <div style="display:flex;align-items:center;gap:10px">
+                <div class="avatar" style="width:30px;height:30px;font-size:12px"><% if (u.avatar) { %><img src="<%= u.avatar %>"/><% } else { %><%= (u.username[0]||'U').toUpperCase() %><% } %></div>
+                <div>
+                  <a href="/admin/users/<%= u.id %>" style="font-weight:600;color:var(--text)"><%= u.username %></a>
+                  <div class="muted"><%= u.email %></div>
+                </div>
+              </div>
+            </td>
+            <td><% if (u.root_admin || u.role === 'admin') { %><span class="pill pill-yellow">admin</span><% } else { %><span class="pill pill-gray">user</span><% } %></td>
+            <td><%= u.vm_count %></td>
+            <td>
+              <span class="pill <%= u.suspended ? 'pill-red' : 'pill-green' %>"><%= u.suspended ? 'Suspended' : 'Active' %></span>
+              <% if (!u.verified) { %><span class="pill pill-yellow">unverified</span><% } %>
+            </td>
+            <td><span class="pill <%= u.tfa_enabled ? 'pill-green' : 'pill-gray' %>"><%= u.tfa_enabled ? 'On' : 'Off' %></span></td>
+            <td class="muted"><%= u.last_login_at ? new Date(u.last_login_at).toLocaleString() : 'Never' %></td>
+            <td class="right">
+              <div class="flex right" style="gap:6px">
+                <a class="btn btn-sm" href="/admin/users/<%= u.id %>">View</a>
+                <% if (u.suspended) { %><button class="btn btn-sm btn-green" onclick="suspend(<%= u.id %>, false)">Unsuspend</button><% } else { %><button class="btn btn-sm" onclick="suspend(<%= u.id %>, true)">Suspend</button><% } %>
+                <button class="btn btn-sm btn-danger" onclick="del(<%= u.id %>)">Delete</button>
+              </div>
+            </td>
+          </tr>
+        <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="userModal" style="display:none">
+  <div style="position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:200;display:grid;place-items:center;padding:20px">
+    <div class="card" style="width:min(460px,94vw)">
+      <h3 class="mb-2">Create User</h3>
+      <div class="form-group"><label>Username *</label><input id="uName"/></div>
+      <div class="form-group"><label>Email *</label><input id="uEmail" type="email"/></div>
+      <div class="form-row">
+        <div class="form-group"><label>Password *</label><input id="uPass" type="password"/></div>
+        <div class="form-group"><label>Display Name</label><input id="uDisplay"/></div>
+      </div>
+      <div class="form-group"><label>Role</label>
+        <select id="uRole"><option value="user">User</option><option value="admin">Admin</option></select>
+      </div>
+      <div class="flex right">
+        <button class="btn" onclick="document.getElementById('userModal').style.display='none'">Cancel</button>
+        <button class="btn btn-primary" onclick="createUser()">Create</button>
+      </div>
+    </div>
+  </div>
+</div>
+<%- include('../partials/music') %>
+<%- include('../partials/foot') %>
+<script>
+function openCreate() { document.getElementById('userModal').style.display = 'block'; }
+function val(id) { return document.getElementById(id).value; }
+async function createUser() {
+  try {
+    await VP.api('/admin/users/create', {
+      method: 'POST',
+      body: { username: val('uName'), email: val('uEmail'), password: val('uPass'), name: val('uDisplay'), role: val('uRole') },
+    });
+    VP.toast('User created', 'success');
+    location.reload();
+  } catch (e) { VP.toast(e.message, 'error'); }
+}
+async function suspend(id, on) {
+  try {
+    await VP.api('/admin/users/' + id + '/suspend', { method: 'POST', body: { suspend: on } });
+    location.reload();
+  } catch (e) { VP.toast(e.message, 'error'); }
+}
+async function del(id) {
+  const ok = await VP.confirmDialog('Delete this user? Their servers and data will also be deleted.', { title: 'Delete user?' });
+  if (!ok) return;
+  try {
+    await VP.api('/admin/users/' + id + '/delete', { method: 'POST' });
+    VP.toast('User deleted', 'success');
+    setTimeout(() => location.reload(), 700);
+  } catch (e) { VP.toast(e.message, 'error'); }
+}
+</script>

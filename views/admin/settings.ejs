@@ -1,0 +1,435 @@
+<%- include('../partials/head', { title: 'Settings Management' }) %>
+<%- include('../partials/ambient') %>
+<%- include('../partials/topbar') %>
+<%- include('../partials/sidebar') %>
+<div class="main">
+  <div class="flex-between mb-3">
+    <h2 style="font-size:22px">Settings Management</h2>
+    <span class="pill pill-blue">Administrator</span>
+  </div>
+  <% if (typeof updated !== 'undefined' && updated) { %><div class="alert alert-success">Settings saved!</div><% } %>
+
+  <div class="tabs" id="settingsTabs">
+    <button class="tab active" data-tab="general" onclick="showTab('general')">General</button>
+    <button class="tab" data-tab="appearance" onclick="showTab('appearance')">Appearance</button>
+    <button class="tab" data-tab="wallpapers" onclick="showTab('wallpapers')">4K Wallpapers</button>
+    <button class="tab" data-tab="music" onclick="showTab('music')">Music</button>
+    <button class="tab" data-tab="bars" onclick="showTab('bars')">Bars</button>
+    <button class="tab" data-tab="security" onclick="showTab('security')">Security</button>
+    <button class="tab" data-tab="vms" onclick="showTab('vms')">VM Defaults</button>
+    <button class="tab" data-tab="mail" onclick="showTab('mail')">Email (SMTP)</button>
+  </div>
+
+  <!-- ============ GENERAL ============ -->
+  <div class="tab-pane" id="tab-general">
+    <div class="card">
+      <div class="card-title">General</div>
+      <form method="post" action="/admin/settings/general">
+        <div class="form-group">
+          <label>Panel Name</label>
+          <input name="panel.name" value="<%= all['panel.name'] || 'vpanel' %>"/>
+        </div>
+
+        <hr class="hr"/>
+        <div class="card-title">Panel Logo</div>
+        <div class="grid grid-2">
+          <div>
+            <div class="form-group">
+              <label>Logo Mode</label>
+              <select name="panel.logo_mode">
+                <option value="url" <%= all['panel.logo_mode'] === 'url' ? 'selected' : '' %>>URL</option>
+                <option value="upload" <%= all['panel.logo_mode'] === 'upload' ? 'selected' : '' %>>Uploaded file</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Logo URL</label>
+              <input name="panel.logo_url" value="<%= all['panel.logo_url'] || '' %>" placeholder="https://..."/>
+            </div>
+            <div class="form-group">
+              <label>Upload Logo</label>
+              <label class="btn btn-sm">Choose file
+                <input type="file" id="logoFile" accept="image/*" style="display:none" onchange="uploadMedia('logo', this)"/>
+              </label>
+              <% if (all['panel.logo_file']) { %><button type="button" class="btn btn-sm btn-danger" onclick="clearMedia('logo')">Remove upload</button><% } %>
+            </div>
+          </div>
+          <div>
+            <label>Live Preview</label>
+            <div class="preview-box">
+              <% const logoP = all['panel.logo_mode'] === 'upload' ? all['panel.logo_file'] : all['panel.logo_url']; %>
+              <% if (logoP) { %><img src="<%= logoP %>"/><% } else { %><span class="muted"><%= all['panel.name'] || 'vpanel' %></span><% } %>
+            </div>
+          </div>
+        </div>
+
+        <hr class="hr"/>
+        <div class="card-title">Panel Favicon</div>
+        <div class="grid grid-2">
+          <div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Favicon Name</label>
+                <input name="panel.favicon_name" value="<%= all['panel.favicon_name'] || '' %>"/>
+                <div class="form-hint">Used as fallback text icon (first letter)</div>
+              </div>
+              <div class="form-group">
+                <label>Mode</label>
+                <select name="panel.favicon_mode">
+                  <option value="url" <%= all['panel.favicon_mode'] === 'url' ? 'selected' : '' %>>URL</option>
+                  <option value="upload" <%= all['panel.favicon_mode'] === 'upload' ? 'selected' : '' %>>Uploaded file</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Favicon URL</label>
+              <input name="panel.favicon_url" value="<%= all['panel.favicon_url'] || '' %>" placeholder="https://..."/>
+            </div>
+            <div class="form-group">
+              <label>Upload Favicon</label>
+              <label class="btn btn-sm">Choose file
+                <input type="file" id="faviconFile" accept="image/*" style="display:none" onchange="uploadMedia('favicon', this)"/>
+              </label>
+              <% if (all['panel.favicon_file']) { %><button type="button" class="btn btn-sm btn-danger" onclick="clearMedia('favicon')">Remove upload</button><% } %>
+            </div>
+          </div>
+          <div>
+            <label>Live Preview</label>
+            <div class="preview-box">
+              <% const favP = all['panel.favicon_mode'] === 'upload' ? all['panel.favicon_file'] : all['panel.favicon_url']; %>
+              <% if (favP) { %><img src="<%= favP %>" style="max-height:40px"/><% } else { %><span style="font-size:30px;font-weight:800;color:var(--accent)"><%= (all['panel.favicon_name'] || 'V')[0].toUpperCase() %></span><% } %>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary mt-3" type="submit">Save General Settings</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ APPEARANCE ============ -->
+  <div class="tab-pane" id="tab-appearance" style="display:none">
+    <div class="card">
+      <div class="card-title">Background</div>
+      <form method="post" action="/admin/settings/general">
+        <div class="grid grid-2">
+          <div>
+            <div class="form-group">
+              <label>Background Mode</label>
+              <select name="panel.bg_mode" onchange="bgModeChanged(this.value)">
+                <option value="color" <%= all['panel.bg_mode'] === 'color' ? 'selected' : '' %>>Solid color</option>
+                <option value="image" <%= all['panel.bg_mode'] === 'image' ? 'selected' : '' %>>Image</option>
+                <option value="video" <%= all['panel.bg_mode'] === 'video' ? 'selected' : '' %>>Video</option>
+                <option value="gradient" <%= all['panel.bg_mode'] === 'gradient' ? 'selected' : '' %>>Gradient</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Background Color</label>
+              <div class="flex"><input type="color" name="panel.bg_color" value="<%= all['panel.bg_color'] || '#0b1020' %>" style="width:64px;height:38px;padding:2px"/><span class="muted mono" id="bgColorText"><%= all['panel.bg_color'] || '#0b1020' %></span></div>
+            </div>
+            <div class="form-group">
+              <label>Background Image URL</label>
+              <input name="panel.bg_url" value="<%= all['panel.bg_url'] || '' %>" placeholder="https://... (also from 4kwallpapers tab)"/>
+            </div>
+            <div class="form-group">
+              <label>Upload Background (image or video)</label>
+              <label class="btn btn-sm">Choose file
+                <input type="file" id="bgFile" accept="image/*,video/*" style="display:none" onchange="uploadMedia('background', this)"/>
+              </label>
+              <% if (all['panel.bg_file'] || all['panel.bg_video_file']) { %><button type="button" class="btn btn-sm btn-danger" onclick="clearMedia('background')">Remove upload</button><% } %>
+            </div>
+            <div class="form-group">
+              <label>Background Video URL</label>
+              <input name="panel.bg_video_url" value="<%= all['panel.bg_video_url'] || '' %>" placeholder="https://...mp4"/>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Overlay Darkness</label>
+                <input type="range" name="panel.bg_overlay" min="0" max="0.9" step="0.05" value="<%= all['panel.bg_overlay'] || '0.55' %>" oninput="document.getElementById('overlayVal').textContent=this.value"/>
+                <div class="form-hint">Value: <span id="overlayVal"><%= all['panel.bg_overlay'] || '0.55' %></span></div>
+              </div>
+              <div class="form-group">
+                <label>Cover</label>
+                <select name="panel.bg_cover">
+                  <option value="1" <%= all['panel.bg_cover'] === '1' ? 'selected' : '' %>>Cover (fill screen)</option>
+                  <option value="0" <%= all['panel.bg_cover'] === '0' ? 'selected' : '' %>>Contain</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div>
+            <label>Live Preview</label>
+            <div class="preview-box" style="min-height:220px;overflow:hidden;background:<%= all['panel.bg_color'] || '#0b1020' %>">
+              <% const bgP = all['panel.bg_mode'] === 'image' ? (all['panel.bg_file'] || all['panel.bg_url']) : all['panel.bg_mode'] === 'video' ? (all['panel.bg_video_file'] || all['panel.bg_video_url']) : ''; %>
+              <% if (all['panel.bg_mode'] === 'video' && bgP) { %><video src="<%= bgP %>" autoplay muted loop style="width:100%;height:100%;object-fit:cover;border-radius:8px"></video><% } else if (all['panel.bg_mode'] === 'image' && bgP) { %><img src="<%= bgP %>" style="width:100%;height:100%;object-fit:cover;border-radius:8px"/><% } else if (all['panel.bg_mode'] === 'gradient') { %><div style="width:100%;height:100%;border-radius:8px;background:linear-gradient(135deg,<%= all['panel.accent'] || '#6366f1' %>,#22d3ee,#0b1020)"></div><% } else { %><span class="muted">Color background: <%= all['panel.bg_color'] || '#0b1020' %></span><% } %>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-primary mt-3" type="submit">Save Appearance</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ WALLPAPERS ============ -->
+  <div class="tab-pane" id="tab-wallpapers" style="display:none">
+    <div class="card">
+      <div class="card-title">4K Wallpapers (4kwallpapers.com)</div>
+      <div class="form-group">
+        <label>API Key</label>
+        <input id="wpKey" value="<%= all['panel.wallpapers_api_key'] || '' %>" placeholder="Get a key from 4kwallpapers.com"/>
+        <div class="form-hint">Uses https://api.4kwallpapers.com/v1/wallpaper/random to browse wallpapers</div>
+      </div>
+      <div class="flex">
+        <button class="btn btn-primary" onclick="saveWpKey()">Save Key</button>
+        <button class="btn" onclick="loadWallpapers()">Browse Wallpapers</button>
+      </div>
+      <div id="wpGrid" class="wall-grid mt-3" style="display:none"></div>
+      <div id="wpMsg" class="muted mt-2"></div>
+    </div>
+  </div>
+
+  <!-- ============ MUSIC ============ -->
+  <div class="tab-pane" id="tab-music" style="display:none">
+    <div class="card">
+      <div class="card-title">Panel Music / Background Sound</div>
+      <form method="post" action="/admin/settings/general">
+        <div class="grid grid-2">
+          <div>
+            <div class="form-group">
+              <label>Music Mode</label>
+              <select name="panel.music_mode">
+                <option value="none" <%= all['panel.music_mode'] === 'none' ? 'selected' : '' %>>Disabled</option>
+                <option value="upload" <%= all['panel.music_mode'] === 'upload' ? 'selected' : '' %>>Uploaded file</option>
+                <option value="url" <%= all['panel.music_mode'] === 'url' ? 'selected' : '' %>>URL</option>
+                <option value="youtube" <%= all['panel.music_mode'] === 'youtube' ? 'selected' : '' %>>YouTube</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Music URL (mp3/m4a/webm)</label>
+              <input name="panel.music_url" value="<%= all['panel.music_url'] || '' %>" placeholder="https://...mp3"/>
+            </div>
+            <div class="form-group">
+              <label>Upload Music</label>
+              <label class="btn btn-sm">Choose file
+                <input type="file" id="musicFile" accept="audio/*,video/*" style="display:none" onchange="uploadMedia('music', this)"/>
+              </label>
+              <% if (all['panel.music_file']) { %><button type="button" class="btn btn-sm btn-danger" onclick="clearMedia('music')">Remove upload</button><% } %>
+            </div>
+            <div class="form-group">
+              <label>YouTube Video ID</label>
+              <input name="panel.music_youtube" value="<%= all['panel.music_youtube'] || '' %>" placeholder="e.g. dQw4w9WgXcQ"/>
+            </div>
+            <div class="form-row-3">
+              <div class="form-group">
+                <label>Volume</label>
+                <input type="range" name="panel.music_volume" min="0" max="100" value="<%= all['panel.music_volume'] || '35' %>" oninput="document.getElementById('volVal').textContent=this.value"/>
+                <div class="form-hint"><span id="volVal"><%= all['panel.music_volume'] || '35' %></span>%</div>
+              </div>
+              <div class="form-group">
+                <label>Autoplay</label>
+                <select name="panel.music_autoplay">
+                  <option value="1" <%= all['panel.music_autoplay'] === '1' ? 'selected' : '' %>>Yes</option>
+                  <option value="0" <%= all['panel.music_autoplay'] === '0' ? 'selected' : '' %>>No</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Loop</label>
+                <select name="panel.music_loop">
+                  <option value="1" <%= all['panel.music_loop'] === '1' ? 'selected' : '' %>>Yes</option>
+                  <option value="0" <%= all['panel.music_loop'] === '0' ? 'selected' : '' %>>No</option>
+                </select>
+              </div>
+            </div>
+            <button class="btn btn-primary mt-2" type="submit">Save Music</button>
+          </div>
+          <div>
+            <label>Live Preview</label>
+            <div class="preview-box" style="min-height:120px;flex-direction:column;justify-content:center">
+              <% const musicP = all['panel.music_mode'] === 'upload' ? all['panel.music_file'] : all['panel.music_mode'] === 'url' ? all['panel.music_url'] : ''; %>
+              <% if (all['panel.music_mode'] === 'youtube' && all['panel.music_youtube']) { %>
+                <iframe src="https://www.youtube-nocookie.com/embed/<%= all['panel.music_youtube'] %>?playsinline=1" style="width:100%;height:130px;border:0;border-radius:8px" allow="autoplay; encrypted-media"></iframe>
+              <% } else if (musicP) { %>
+                <audio src="<%= musicP %>" controls style="width:100%"></audio>
+              <% } else { %>
+                <span class="muted">No music configured</span>
+              <% } %>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ BARS ============ -->
+  <div class="tab-pane" id="tab-bars" style="display:none">
+    <div class="card">
+      <div class="card-title">Navigation Bars</div>
+      <form method="post" action="/admin/settings/general">
+        <div class="form-group">
+          <label>Bar Style</label>
+          <select name="panel.navbar_style">
+            <option value="transparent" <%= all['panel.navbar_style'] === 'transparent' ? 'selected' : '' %>>Transparent</option>
+            <option value="glass" <%= all['panel.navbar_style'] === 'glass' ? 'selected' : '' %>>Glass (blur)</option>
+            <option value="solid" <%= all['panel.navbar_style'] === 'solid' ? 'selected' : '' %>>Solid</option>
+          </select>
+        </div>
+        <div class="check"><input type="checkbox" id="nbTransparent" name="panel.navbar_transparent" value="1" <%= all['panel.navbar_transparent'] === '1' ? 'checked' : '' %>/> Transparent bar</div>
+        <div class="check mt-1"><input type="checkbox" id="nbBlur" name="panel.navbar_blur" value="1" <%= all['panel.navbar_blur'] === '1' ? 'checked' : '' %>/> Blur bar (glassmorphism)</div>
+        <div class="form-group mt-3"><label>Accent Color</label>
+          <div class="flex"><input type="color" name="panel.accent" value="<%= all['panel.accent'] || '#6366f1' %>" style="width:64px;height:38px;padding:2px"/><span class="muted mono"><%= all['panel.accent'] || '#6366f1' %></span></div>
+        </div>
+        <div class="form-group"><label>Theme</label>
+          <select name="panel.theme">
+            <option value="dark" <%= all['panel.theme'] === 'dark' ? 'selected' : '' %>>Dark</option>
+            <option value="light" <%= all['panel.theme'] === 'light' ? 'selected' : '' %>>Light</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" type="submit">Save Bars</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ SECURITY ============ -->
+  <div class="tab-pane" id="tab-security" style="display:none">
+    <div class="card">
+      <div class="card-title">Security</div>
+      <form method="post" action="/admin/settings/general">
+        <div class="form-group"><label>Allow registration</label>
+          <select name="security.allow_register">
+            <option value="1" <%= all['security.allow_register'] === '1' ? 'selected' : '' %>>Yes</option>
+            <option value="0" <%= all['security.allow_register'] === '0' ? 'selected' : '' %>>No</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Require email verification</label>
+          <select name="security.require_verify">
+            <option value="1" <%= all['security.require_verify'] === '1' ? 'selected' : '' %>>Yes</option>
+            <option value="0" <%= all['security.require_verify'] === '0' ? 'selected' : '' %>>No</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Force 2FA for all users</label>
+          <select name="security.force_tfa">
+            <option value="1" <%= all['security.force_tfa'] === '1' ? 'selected' : '' %>>Yes</option>
+            <option value="0" <%= all['security.force_tfa'] === '0' ? 'selected' : '' %>>No</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" type="submit">Save Security</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ VM DEFAULTS ============ -->
+  <div class="tab-pane" id="tab-vms" style="display:none">
+    <div class="card">
+      <div class="card-title">VM Defaults</div>
+      <form method="post" action="/admin/settings/general">
+        <div class="form-row-4">
+          <div class="form-group"><label>Auto SSH Port Range (min)</label><input name="vm.auto_port_min" value="<%= all['vm.auto_port_min'] || '25501' %>"/></div>
+          <div class="form-group"><label>Auto SSH Port Range (max)</label><input name="vm.auto_port_max" value="<%= all['vm.auto_port_max'] || '25600' %>"/></div>
+          <div class="form-group"><label>Auto VNC Port Range (min)</label><input name="vm.vnc_port_min" value="<%= all['vm.vnc_port_min'] || '25901' %>"/></div>
+          <div class="form-group"><label>Auto VNC Port Range (max)</label><input name="vm.vnc_port_max" value="<%= all['vm.vnc_port_max'] || '26000' %>"/></div>
+        </div>
+        <div class="form-row-4">
+          <div class="form-group"><label>Agent Port Range (min)</label><input name="vm.agent_port_min" value="<%= all['vm.agent_port_min'] || '26101' %>"/></div>
+          <div class="form-group"><label>Agent Port Range (max)</label><input name="vm.agent_port_max" value="<%= all['vm.agent_port_max'] || '26200' %>"/></div>
+          <div class="form-group"><label>Default OS</label><input name="vm.default_os" value="<%= all['vm.default_os'] || 'Ubuntu 24.04' %>"/></div>
+          <div class="form-group"></div>
+        </div>
+        <div class="form-hint mb-2">VNC ports feed the graphical noVNC console; agent ports feed the File Manager (vPanel agent installed in the VM).</div>
+        <div class="form-row-3">
+          <div class="form-group"><label>Default Memory (MB)</label><input name="vm.default_memory" value="<%= all['vm.default_memory'] || '2048' %>"/></div>
+          <div class="form-group"><label>Default CPUs</label><input name="vm.default_cpus" value="<%= all['vm.default_cpus'] || '2' %>"/></div>
+          <div class="form-group"><label>Default Disk</label><input name="vm.default_disk" value="<%= all['vm.default_disk'] || '20G' %>"/></div>
+        </div>
+        <button class="btn btn-primary" type="submit">Save VM Defaults</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ MAIL ============ -->
+  <div class="tab-pane" id="tab-mail" style="display:none">
+    <div class="card">
+      <div class="card-title">Email (SMTP)</div>
+      <p class="muted mb-2">Used for forgot password and email verification.</p>
+      <form method="post" action="/admin/settings/general">
+        <div class="form-row">
+          <div class="form-group"><label>SMTP Host</label><input name="mail.host" value="<%= all['mail.host'] || '' %>"/></div>
+          <div class="form-group"><label>Port</label><input name="mail.port" value="<%= all['mail.port'] || '587' %>"/></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Username</label><input name="mail.user" value="<%= all['mail.user'] || '' %>"/></div>
+          <div class="form-group"><label>Password</label><input name="mail.pass" type="password" value="<%= all['mail.pass'] || '' %>"/></div>
+        </div>
+        <div class="form-group"><label>From</label><input name="mail.from" value="<%= all['mail.from'] || '' %>"/></div>
+        <div class="form-group"><label>Secure (TLS)</label>
+          <select name="mail.secure">
+            <option value="true" <%= all['mail.secure'] === true || all['mail.secure'] === 'true' ? 'selected' : '' %>>Yes</option>
+            <option value="false" <%= all['mail.secure'] !== true && all['mail.secure'] !== 'true' ? 'selected' : '' %>>No</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" type="submit">Save SMTP</button>
+      </form>
+    </div>
+  </div>
+</div>
+<%- include('../partials/music') %>
+<%- include('../partials/foot') %>
+<script>
+function showTab(name) {
+  document.querySelectorAll('.tab-pane').forEach((p) => p.style.display = 'none');
+  document.getElementById('tab-' + name).style.display = 'block';
+  document.querySelectorAll('#settingsTabs .tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
+}
+function bgModeChanged(v) {}
+async function uploadMedia(type, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('file', file);
+  const r = await fetch('/admin/settings/' + type, { method: 'POST', body: fd });
+  const d = await r.json();
+  if (!r.ok) return VP.toast(d.error || 'Upload failed', 'error');
+  VP.toast('Uploaded! Refresh preview by saving settings', 'success');
+  setTimeout(() => location.reload(), 900);
+}
+async function clearMedia(type) {
+  await VP.api('/admin/settings/' + type + '-clear', { method: 'POST' });
+  location.reload();
+}
+async function saveWpKey() {
+  try {
+    await VP.api('/admin/settings', { method: 'POST', body: { 'panel.wallpapers_api_key': document.getElementById('wpKey').value } });
+    VP.toast('Key saved', 'success');
+  } catch (e) { VP.toast(e.message, 'error'); }
+}
+async function loadWallpapers() {
+  const grid = document.getElementById('wpGrid');
+  const msg = document.getElementById('wpMsg');
+  grid.style.display = 'grid';
+  msg.textContent = 'Loading wallpapers...';
+  try {
+    const d = await VP.api('/admin/wallpapers');
+    msg.textContent = d.wallpapers.length + ' wallpapers loaded. Click one to set as background.';
+    grid.innerHTML = '';
+    for (const w of d.wallpapers) {
+      const url = w.thumb || w.thumbnail || w.url || w.preview || (w.image && w.image.url) || '';
+      const full = w.url || (w.image && w.image.url) || w.download || url;
+      if (!full) continue;
+      const card = VP.el('div', { class: 'wall-card' });
+      const img = VP.el('img', { src: url, loading: 'lazy', onerror: () => card.remove() });
+      const ov = VP.el('div', { class: 'wall-btn' });
+      const btn = VP.el('button', { class: 'btn btn-sm btn-primary' }, 'Set as background');
+      btn.onclick = async (e) => {
+        e.stopPropagation();
+        try {
+          await VP.api('/admin/wallpapers/apply', { method: 'POST', body: { url: full, thumbnail: url } });
+          VP.toast('Background applied!', 'success');
+          setTimeout(() => location.reload(), 700);
+        } catch (err) { VP.toast(err.message, 'error'); }
+      };
+      ov.appendChild(btn);
+      card.append(img, ov);
+      grid.appendChild(card);
+    }
+    if (!grid.children.length) msg.textContent = 'No wallpapers returned. Check your API key.';
+  } catch (e) { msg.textContent = 'Failed: ' + e.message; }
+}
+</script>

@@ -1,0 +1,129 @@
+<%- include('../partials/head', { title: 'Dashboard' }) %>
+<%- include('../partials/ambient') %>
+<%- include('../partials/topbar') %>
+<%- include('../partials/sidebar') %>
+<div class="main">
+  <div class="flex-between mb-3">
+    <h2 style="font-size:22px">Dashboard</h2>
+    <a class="btn btn-primary" href="/admin/servers/create"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> New Server</a>
+  </div>
+
+  <div class="grid grid-4 mb-3">
+    <div class="card stat">
+      <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01M6 18h.01"/></svg></div>
+      <div><div class="stat-value"><%= vms.length %></div><div class="stat-label">Total Servers</div></div>
+    </div>
+    <div class="card stat">
+      <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
+      <div><div class="stat-value" style="color:var(--green)"><%= running %></div><div class="stat-label">Running</div></div>
+    </div>
+    <div class="card stat">
+      <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg></div>
+      <div><div class="stat-value"><%= subVms.length %></div><div class="stat-label">Shared With You</div></div>
+    </div>
+    <div class="card stat">
+      <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l2 2M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/></svg></div>
+      <div><div class="stat-value"><%= vms.filter(v => v.status === 'running').reduce((a,v)=>a+v.memory,0) %>MB</div><div class="stat-label">RAM Allocated</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Your Servers</div>
+    <% if (vms.length === 0) { %>
+      <div class="empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01M6 18h.01"/></svg>
+        <p>You don't have any servers yet.</p>
+        <div class="mt-2"><a href="/admin/servers/create" class="btn btn-primary">Create your first server</a></div>
+      </div>
+    <% } else { %>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Server</th><th>OS</th><th>SSH Port</th><th>Resources</th><th>Status</th><th class="right">Actions</th></tr></thead>
+        <tbody>
+        <% for (const v of vms) { %>
+          <tr>
+            <td>
+              <a href="/servers/<%= v.id %>" style="font-weight:600;color:var(--text)"><%= v.name %></a>
+              <div class="muted"><%= v.hostname || '' %> · <%= v.username %></div>
+            </td>
+            <td><span class="pill pill-blue"><%= v.os_type || '-' %></span></td>
+            <td class="mono">25501-25600 range · <%= v.ssh_port %></td>
+            <td><span class="muted"><%= v.cpus %> CPU · <%= v.memory %>MB · <%= v.disk_size %></span></td>
+            <td><span class="pill <%= v.status === 'running' ? 'pill-green' : 'pill-gray' %>"><%= v.status %></span></td>
+            <td class="right">
+              <div class="flex right" style="gap:6px">
+                <% if (v.status === 'running') { %>
+                  <button class="btn btn-sm" onclick="power(<%= v.id %>,'stop')">Stop</button>
+                  <button class="btn btn-sm btn-primary" onclick="power(<%= v.id %>,'restart')">Restart</button>
+                <% } else { %>
+                  <button class="btn btn-sm btn-green" onclick="power(<%= v.id %>,'start')">Start</button>
+                <% } %>
+                <a class="btn btn-sm" href="/servers/<%= v.id %>">Manage</a>
+              </div>
+            </td>
+          </tr>
+        <% } %>
+        </tbody>
+      </table>
+    </div>
+    <% } %>
+  </div>
+
+  <% if (subVms.length > 0) { %>
+  <div class="card mt-3">
+    <div class="card-title">Shared Servers</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Server</th><th>Owner</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+        <% for (const v of subVms) { %>
+          <tr>
+            <td><a href="/servers/<%= v.id %>" style="font-weight:600;color:var(--text)"><%= v.name %></a></td>
+            <td><span class="muted"><%= v.owner_name %></span></td>
+            <td><span class="pill <%= v.status === 'running' ? 'pill-green' : 'pill-gray' %>"><%= v.status %></span></td>
+            <td class="right"><a class="btn btn-sm" href="/servers/<%= v.id %>">Open</a></td>
+          </tr>
+        <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <% } %>
+
+  <div class="card mt-3">
+    <div class="card-title">Recent Activity</div>
+    <% if (recentActivity.length === 0) { %><div class="empty"><p>No activity yet.</p></div><% } else { %>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Event</th><th>Details</th><th>When</th></tr></thead>
+        <tbody>
+        <% for (const a of recentActivity) { %>
+          <tr>
+            <td><span class="mono"><%= a.event %></span></td>
+            <td class="muted truncate" style="max-width:340px"><%= a.details ? JSON.stringify(a.details) : '-' %></td>
+            <td class="muted"><%= new Date(a.created_at).toLocaleString() %></td>
+          </tr>
+        <% } %>
+        </tbody>
+      </table>
+    </div>
+    <% } %>
+  </div>
+</div>
+<%- include('../partials/music') %>
+<%- include('../partials/foot') %>
+<script>
+async function power(id, action) {
+  try {
+    await VP.api(`/servers/${id}/power`, { method: 'POST', body: { action } });
+    VP.toast(`Server ${action} requested`, 'success');
+    setTimeout(() => location.reload(), 700);
+  } catch (e) { VP.toast(e.message, 'error'); }
+}
+document.getElementById('globalSearch')?.addEventListener('input', function () {
+  const q = this.value.toLowerCase();
+  document.querySelectorAll('tbody tr').forEach((tr) => {
+    tr.style.display = tr.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+});
+</script>

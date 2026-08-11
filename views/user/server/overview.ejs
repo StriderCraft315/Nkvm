@@ -1,0 +1,99 @@
+<%- include('../../partials/head', { title: vm.name + ' - Overview' }) %>
+<%- include('../../partials/ambient') %>
+<%- include('../../partials/topbar') %>
+<%- include('../../partials/sidebar') %>
+<div class="main">
+  <div class="flex-between mb-3">
+    <h2 style="font-size:22px"><%= vm.name %></h2>
+    <div class="flex">
+      <span id="statusPill" class="pill <%= vm.status === 'running' ? 'pill-green' : 'pill-gray' %>"><%= vm.status %></span>
+      <% if (vm.status === 'running') { %>
+        <button class="btn btn-sm" id="btnStop" onclick="power('stop')">Stop</button>
+        <button class="btn btn-sm btn-primary" onclick="power('restart')">Restart</button>
+      <% } else { %>
+        <button class="btn btn-sm btn-green" id="btnStart" onclick="power('start')">Start</button>
+      <% } %>
+      <a class="btn btn-sm" href="/servers/<%= vm.id %>/console">Console</a>
+    </div>
+  </div>
+  <%- include('_tabs') %>
+
+  <div class="grid grid-4 mb-3">
+    <div class="card stat"><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg></div><div><div class="stat-value"><%= vm.cpus %></div><div class="stat-label">CPUs</div></div></div>
+    <div class="card stat"><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01M6 18h.01"/></svg></div><div><div class="stat-value"><%= vm.memory %>MB</div><div class="stat-label">Memory</div></div></div>
+    <div class="card stat"><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><div><div class="stat-value"><%= vm.disk_size %></div><div class="stat-label">Disk</div></div></div>
+    <div class="card stat"><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l2 2M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/></svg></div><div><div class="stat-value" id="statUptime"><%= vm.status === 'running' ? '...' : '—' %></div><div class="stat-label">Uptime</div></div></div>
+  </div>
+
+  <div class="grid grid-2">
+    <div class="card">
+      <div class="card-title">Server Details</div>
+      <div class="table-wrap">
+        <table>
+          <tbody>
+            <tr><td class="muted">ID</td><td class="mono"><%= vm.uuid %></td></tr>
+            <tr><td class="muted">OS</td><td><%= vm.os_type %> <%= vm.codename %></td></tr>
+            <tr><td class="muted">Hostname</td><td><%= vm.hostname %></td></tr>
+            <tr><td class="muted">Username</td><td class="mono"><%= vm.username %></td></tr>
+            <tr><td class="muted">SSH</td><td class="mono">ssh -p <%= vm.ssh_port %> <%= vm.username %>@localhost</td></tr>
+            <tr><td class="muted">VNC</td><td class="mono">port <%= vm.vnc_port %> · <a href="/servers/<%= vm.id %>/console">open console</a></td></tr>
+            <tr><td class="muted">Port Forwards</td><td class="mono"><% if (vm.port_forwards && vm.port_forwards.length) { %><% for (const f of vm.port_forwards) { %><%= f.host %>:<%= f.guest %> &nbsp;<% } %><% } else { %>None<% } %></td></tr>
+            <tr><td class="muted">Created</td><td><%= new Date(vm.created_at).toLocaleString() %></td></tr>
+            <tr><td class="muted">Start on boot</td><td><%= vm.start_on_boot ? 'Yes' : 'No' %></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Quick Actions</div>
+      <div class="flex flex-wrap" style="gap:10px">
+        <a class="btn" href="/servers/<%= vm.id %>/console">Open Console</a>
+        <a class="btn" href="/servers/<%= vm.id %>/files">File Manager</a>
+        <a class="btn" href="/servers/<%= vm.id %>/backups">Create Backup</a>
+        <a class="btn" href="/servers/<%= vm.id %>/settings">Settings</a>
+        <a class="btn" href="/servers/<%= vm.id %>/subusers">Manage Subusers</a>
+        <button class="btn btn-danger" data-confirm data-confirm-msg="This will permanently delete <%= vm.name %> and all its data!" onclick="delServer()">Delete Server</button>
+      </div>
+      <hr class="hr"/>
+      <div class="muted">Backups: <%= backups.length %> total · <%= backups.filter(b=>b.kind==='full').length %> full</div>
+    </div>
+  </div>
+
+  <div class="card mt-3">
+    <div class="card-title">Access</div>
+    <div class="alert alert-info">SSH: <span class="mono">ssh -p <%= vm.ssh_port %> <%= vm.username %>@localhost</span> · Password: <span class="mono"><%= vm.password %></span></div>
+  </div>
+</div>
+<%- include('../../partials/music') %>
+<%- include('../../partials/foot') %>
+<script>
+async function power(action) {
+  const btn = action === 'stop' ? document.getElementById('btnStop') : document.getElementById('btnStart');
+  if (btn) btn.disabled = true;
+  try {
+    await VP.api(`/servers/<%= vm.id %>/power`, { method: 'POST', body: { action } });
+    VP.toast('Command sent', 'success');
+    setTimeout(() => location.reload(), 900);
+  } catch (e) { VP.toast(e.message, 'error'); if (btn) btn.disabled = false; }
+}
+async function delServer() {
+  const ok = await VP.confirmDialog('This will permanently delete <%= vm.name %> and ALL its data (disk image, backups, schedules). This cannot be undone!', { title: 'Delete server?' });
+  if (!ok) return;
+  try {
+    await VP.api(`/servers/<%= vm.id %>/delete`, { method: 'POST' });
+    VP.toast('Server deleted', 'success');
+    setTimeout(() => location.href = '/dashboard', 800);
+  } catch (e) { VP.toast(e.message, 'error'); }
+}
+<% if (vm.status === 'running') { %>
+fetch(vpApiBase() + `/api/vms/<%= vm.id %>/status`, { headers: { Authorization: 'Bearer ' + vpToken() } })
+  .then(r => r.json())
+  .then(d => {
+    const up = document.getElementById('statUptime');
+    if (up && d.uptime) {
+      const h = Math.floor(d.uptime / 3600), m = Math.floor((d.uptime % 3600) / 60);
+      up.textContent = h ? `${h}h ${m}m` : `${m}m`;
+    }
+  }).catch(()=>{});
+<% } %>
+</script>

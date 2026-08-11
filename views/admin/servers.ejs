@@ -1,0 +1,60 @@
+<%- include('../partials/head', { title: 'Server Management' }) %>
+<%- include('../partials/ambient') %>
+<%- include('../partials/topbar') %>
+<%- include('../partials/sidebar') %>
+<div class="main">
+  <div class="flex-between mb-3">
+    <h2 style="font-size:22px">Server Management</h2>
+    <a class="btn btn-primary" href="/admin/servers/create"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Create VM</a>
+  </div>
+
+  <div class="card">
+    <% if (vms.length === 0) { %><div class="empty"><p>No servers have been created yet.</p></div><% } else { %>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Server</th><th>Owner</th><th>OS</th><th>Resources</th><th>SSH Port</th><th>Status</th><th>Created</th><th class="right">Actions</th></tr></thead>
+        <tbody>
+        <% for (const v of vms) { %>
+          <tr>
+            <td><a href="/admin/servers/<%= v.id %>" style="font-weight:600;color:var(--text)"><%= v.name %></a></td>
+            <td class="muted"><%= v.owner_name %></td>
+            <td><span class="pill pill-blue"><%= v.os_type || '-' %></span></td>
+            <td class="muted"><%= v.cpus %>C · <%= v.memory %>MB · <%= v.disk_size %></td>
+            <td class="mono"><%= v.ssh_port %></td>
+            <td><span class="pill <%= v.status === 'running' ? 'pill-green' : 'pill-gray' %>"><%= v.status %></span></td>
+            <td class="muted"><%= new Date(v.created_at).toLocaleDateString() %></td>
+            <td class="right">
+              <div class="flex right" style="gap:6px">
+                <% if (v.status === 'running') { %><button class="btn btn-sm" onclick="action(<%= v.id %>,'stop')">Stop</button><% } else { %><button class="btn btn-sm btn-green" onclick="action(<%= v.id %>,'start')">Start</button><% } %>
+                <a class="btn btn-sm" href="/admin/servers/<%= v.id %>">Manage</a>
+                <button class="btn btn-sm btn-danger" onclick="del(<%= v.id %>)">Delete</button>
+              </div>
+            </td>
+          </tr>
+        <% } %>
+        </tbody>
+      </table>
+    </div>
+    <% } %>
+  </div>
+</div>
+<%- include('../partials/music') %>
+<%- include('../partials/foot') %>
+<script>
+async function action(id, a) {
+  try {
+    await VP.api('/admin/servers/' + id + '/action', { method: 'POST', body: { action: a } });
+    VP.toast('Command sent', 'success');
+    setTimeout(() => location.reload(), 900);
+  } catch (e) { VP.toast(e.message, 'error'); }
+}
+async function del(id) {
+  const ok = await VP.confirmDialog('Permanently delete this server and all its data?', { title: 'Delete server?' });
+  if (!ok) return;
+  try {
+    await VP.api('/admin/servers/' + id + '/action', { method: 'POST', body: { action: 'delete' } });
+    VP.toast('Server deleted', 'success');
+    setTimeout(() => location.reload(), 800);
+  } catch (e) { VP.toast(e.message, 'error'); }
+}
+</script>

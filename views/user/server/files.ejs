@@ -1,0 +1,209 @@
+<%- include('../../partials/head', { title: vm.name + ' - File Manager' }) %>
+<%- include('../../partials/ambient') %>
+<%- include('../../partials/topbar') %>
+<%- include('../../partials/sidebar') %>
+<div class="main">
+  <div class="flex-between mb-3">
+    <h2 style="font-size:22px">File Manager · <%= vm.name %></h2>
+    <div class="flex">
+      <span class="pill <%= vm.status === 'running' ? 'pill-green' : 'pill-gray' %>"><%= vm.status %></span>
+      <a class="btn btn-sm" href="/servers/<%= vm.id %>">Back</a>
+    </div>
+  </div>
+  <%- include('_tabs') %>
+
+  <% if (vm.status !== 'running') { %>
+    <div class="card">
+      <div class="alert alert-info">The server must be running to manage files. New servers use the vPanel agent (installed automatically on first boot).</div>
+    </div>
+  <% } else { %>
+  <div class="card">
+    <div class="file-toolbar">
+      <button class="btn btn-sm" onclick="goUp()" title="Up">Up</button>
+      <button class="btn btn-sm" onclick="refresh()" title="Refresh">Refresh</button>
+      <input class="path-input" id="pathInput" value="/" spellcheck="false"/>
+      <button class="btn btn-sm" onclick="goPath()">Go</button>
+      <span style="flex:1"></span>
+      <label class="btn btn-sm">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        Upload
+        <input type="file" id="fileUpload" style="display:none" multiple onchange="uploadFiles(this.files)"/>
+      </label>
+      <button class="btn btn-sm" onclick="newFolder()">New Folder</button>
+      <button class="btn btn-sm" onclick="newFile()">New File</button>
+    </div>
+    <div class="table-wrap">
+      <table class="file-table">
+        <thead><tr><th>Name</th><th>Size</th><th>Permissions</th><th>Modified</th><th class="right">Actions</th></tr></thead>
+        <tbody id="fileBody">
+          <tr><td colspan="5"><div class="empty">Loading...</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="editorModal" style="display:none">
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:200;display:grid;place-items:center;padding:20px">
+      <div class="card" style="width:min(820px,96vw);max-height:90vh;overflow:auto">
+        <div class="flex-between mb-2">
+          <h3 id="editorTitle">Edit file</h3>
+          <button class="btn btn-sm" onclick="document.getElementById('editorModal').style.display='none'">Close</button>
+        </div>
+        <textarea id="editorContent" style="min-height:48vh;font-family:Consolas,monospace"></textarea>
+        <div class="flex right mt-2">
+          <button class="btn btn-sm" onclick="document.getElementById('editorModal').style.display='none'">Cancel</button>
+          <button class="btn btn-sm btn-primary" onclick="saveEditor()">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <% } %>
+</div>
+<%- include('../../partials/music') %>
+<%- include('../../partials/foot') %>
+<script>
+(function () {
+  const API = () => `${vpApiBase()}/api/vms/<%= vm.id %>/files`;
+  const HDR = { Authorization: 'Bearer ' + vpToken() };
+  let currentPath = '/';
+  let editing = null;
+
+  const icons = {
+    dir: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>',
+    file: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>',
+    link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
+  };
+
+  window.refresh = async function () {
+    try {
+      const d = await VP.api(API() + '?path=' + encodeURIComponent(currentPath), { headers: HDR });
+      const body = document.getElementById('fileBody');
+      body.innerHTML = '';
+      if (d.files.length === 0) { body.innerHTML = '<tr><td colspan="5"><div class="empty">Empty directory</div></td></tr>'; }
+      for (const f of d.files) {
+        const tr = document.createElement('tr');
+        const nameTd = document.createElement('td');
+        nameTd.className = 'fname ' + (f.type === 'dir' ? 'dir' : '');
+        nameTd.innerHTML = icons[f.type] || icons.file;
+        nameTd.appendChild(document.createTextNode(' ' + f.name));
+        if (f.type === 'dir') nameTd.onclick = () => { currentPath = f.path; document.getElementById('pathInput').value = currentPath; refresh(); };
+        else nameTd.onclick = () => openFile(f);
+        tr.appendChild(nameTd);
+
+        const sizeTd = document.createElement('td'); sizeTd.className = 'muted'; sizeTd.textContent = f.type === 'dir' ? '-' : VP.fmtBytes(f.size); tr.appendChild(sizeTd);
+        const permTd = document.createElement('td'); permTd.className = 'mono muted'; permTd.textContent = f.perms; tr.appendChild(permTd);
+        const dateTd = document.createElement('td'); dateTd.className = 'muted'; dateTd.textContent = f.date; tr.appendChild(dateTd);
+
+        const actTd = document.createElement('td');
+        actTd.className = 'file-actions';
+        if (f.type === 'file') {
+          actTd.appendChild(iconBtn('Download', () => { window.open(API() + '/download?path=' + encodeURIComponent(f.path) + '&token=' + vpToken(), '_blank'); }));
+          actTd.appendChild(iconBtn('Edit', () => openFile(f)));
+        }
+        actTd.appendChild(iconBtn('Rename', () => renameItem(f)));
+        actTd.appendChild(iconBtn('Delete', () => delItem(f)));
+        tr.appendChild(actTd);
+        body.appendChild(tr);
+      }
+    } catch (e) { VP.toast(e.message, 'error'); }
+  };
+
+  function iconBtn(title, fn) {
+    const b = document.createElement('button');
+    b.className = 'icon-btn';
+    b.title = title;
+    b.innerHTML = title === 'Delete'
+      ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>'
+      : title === 'Rename'
+      ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>'
+      : title === 'Edit'
+      ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>'
+      : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>';
+    b.onclick = fn;
+    return b;
+  }
+
+  window.goUp = () => {
+    const parts = currentPath.split('/').filter(Boolean);
+    parts.pop();
+    currentPath = '/' + parts.join('/');
+    document.getElementById('pathInput').value = currentPath;
+    refresh();
+  };
+  window.goPath = () => { currentPath = document.getElementById('pathInput').value || '/'; refresh(); };
+  document.getElementById('pathInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') goPath(); });
+
+  async function openFile(f) {
+    try {
+      const d = await VP.api(API() + '/read?path=' + encodeURIComponent(f.path), { headers: HDR });
+      editing = f;
+      document.getElementById('editorTitle').textContent = 'Editing ' + f.name;
+      document.getElementById('editorContent').value = d.content;
+      document.getElementById('editorModal').style.display = 'block';
+    } catch (e) { VP.toast(e.message, 'error'); }
+  }
+
+  window.saveEditor = async () => {
+    try {
+      await VP.api(API() + '/write', { method: 'POST', headers: HDR, body: { path: editing.path, content: document.getElementById('editorContent').value } });
+      VP.toast('Saved', 'success');
+      document.getElementById('editorModal').style.display = 'none';
+    } catch (e) { VP.toast(e.message, 'error'); }
+  };
+
+  async function delItem(f) {
+    const ok = await VP.confirmDialog('Delete ' + f.name + '?');
+    if (!ok) return;
+    try {
+      await VP.api(API() + '/delete', { method: 'POST', headers: HDR, body: { path: f.path, recursive: f.type === 'dir' } });
+      refresh();
+    } catch (e) { VP.toast(e.message, 'error'); }
+  }
+
+  async function renameItem(f) {
+    const name = prompt('New name for ' + f.name, f.name);
+    if (!name || name === f.name) return;
+    try {
+      await VP.api(API() + '/rename', { method: 'POST', headers: HDR, body: { from: f.path, to: f.path.slice(0, f.path.lastIndexOf('/') + 1) + name } });
+      refresh();
+    } catch (e) { VP.toast(e.message, 'error'); }
+  }
+
+  window.newFolder = async () => {
+    const name = prompt('Folder name');
+    if (!name) return;
+    try {
+      await VP.api(API() + '/mkdir', { method: 'POST', headers: HDR, body: { path: currentPath.replace(/\/$/, '') + '/' + name } });
+      refresh();
+    } catch (e) { VP.toast(e.message, 'error'); }
+  };
+  window.newFile = async () => {
+    const name = prompt('File name');
+    if (!name) return;
+    try {
+      const p = currentPath.replace(/\/$/, '') + '/' + name;
+      await VP.api(API() + '/write', { method: 'POST', headers: HDR, body: { path: p, content: '' } });
+      refresh();
+    } catch (e) { VP.toast(e.message, 'error'); }
+  };
+
+  window.uploadFiles = async (files) => {
+    for (const file of files) {
+      const p = currentPath.replace(/\/$/, '') + '/' + file.name;
+      try {
+        const r = await fetch(API() + '/upload', {
+          method: 'POST',
+          headers: { ...HDR, 'x-file-path': p, 'Content-Type': 'application/octet-stream' },
+          body: file,
+        });
+        if (!r.ok) { const j = await r.json().catch(()=>({})); throw new Error(j.error || 'Upload failed'); }
+      } catch (e) { VP.toast(e.message, 'error'); }
+    }
+    VP.toast('Upload complete', 'success');
+    refresh();
+  };
+
+  window.openFile = openFile;
+  if (<%= vm.status === 'running' ? 'true' : 'false' %>) refresh();
+})();
+</script>

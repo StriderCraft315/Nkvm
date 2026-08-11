@@ -1,0 +1,98 @@
+<%- include('../partials/head', { title: vm.name }) %>
+<%- include('../partials/ambient') %>
+<%- include('../partials/topbar') %>
+<%- include('../partials/sidebar') %>
+<div class="main">
+  <div class="flex-between mb-3">
+    <h2 style="font-size:22px"><%= vm.name %></h2>
+    <div class="flex">
+      <span class="pill <%= vm.status === 'running' ? 'pill-green' : 'pill-gray' %>"><%= vm.status %></span>
+      <% if (vm.status === 'running') { %>
+        <button class="btn btn-sm" onclick="action('stop')">Stop</button>
+        <button class="btn btn-sm btn-primary" onclick="action('restart')">Restart</button>
+      <% } else { %>
+        <button class="btn btn-sm btn-green" onclick="action('start')">Start</button>
+      <% } %>
+      <a class="btn btn-sm" href="/servers/<%= vm.id %>/console">Console</a>
+      <button class="btn btn-sm btn-danger" onclick="del()">Delete</button>
+    </div>
+  </div>
+
+  <div class="grid grid-4 mb-3">
+    <div class="card stat"><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg></div><div><div class="stat-value"><%= vm.cpus %></div><div class="stat-label">CPUs</div></div></div>
+    <div class="card stat"><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01M6 18h.01"/></svg></div><div><div class="stat-value"><%= vm.memory %>MB</div><div class="stat-label">Memory</div></div></div>
+    <div class="card stat"><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><div><div class="stat-value"><%= vm.disk_size %></div><div class="stat-label">Disk</div></div></div>
+    <div class="card stat"><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l2 2M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/></svg></div><div><div class="stat-value"><%= vm.status === 'running' ? (Math.floor(uptime/60) + 'm') : '—' %></div><div class="stat-label">Uptime</div></div></div>
+  </div>
+
+  <div class="grid grid-2">
+    <div class="card">
+      <div class="card-title">Details</div>
+      <div class="table-wrap">
+        <table>
+          <tbody>
+            <tr><td class="muted">UUID</td><td class="mono"><%= vm.uuid %></td></tr>
+            <tr><td class="muted">Owner</td><td><%= vm.owner_name %> &lt;<%= vm.owner_email %>&gt;</td></tr>
+            <tr><td class="muted">OS</td><td><%= vm.os_type %> <%= vm.codename %></td></tr>
+            <tr><td class="muted">SSH</td><td class="mono">ssh -p <%= vm.ssh_port %> <%= vm.username %>@localhost</td></tr>
+            <tr><td class="muted">VNC</td><td class="mono">127.0.0.1:<%= vm.vnc_port %> <a href="/servers/<%= vm.id %>/console">(console)</a></td></tr>
+            <tr><td class="muted">Password</td><td class="mono"><%= vm.password %></td></tr>
+            <tr><td class="muted">Image</td><td class="mono truncate" style="max-width:220px"><%= vm.img_file %></td></tr>
+            <tr><td class="muted">Forwards</td><td class="mono"><% if (vm.port_forwards && vm.port_forwards.length) { %><% for (const f of vm.port_forwards) { %><%= f.host %>:<%= f.guest %> &nbsp;<% } %><% } else { %>None<% } %></td></tr>
+            <tr><td class="muted">Created</td><td><%= new Date(vm.created_at).toLocaleString() %></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <div class="card-title">Backups (<%= backups.length %>)</div>
+        <% if (backups.length === 0) { %><div class="muted">No backups</div><% } else { %>
+        <% for (const b of backups.slice(0, 5)) { %>
+          <div class="flex-between" style="padding:8px 0;border-bottom:1px solid var(--border)">
+            <span class="mono truncate" style="max-width:180px"><%= b.name %></span>
+            <span class="muted"><%= (b.size/1024/1024).toFixed(1) %>MB · <%= new Date(b.created_at).toLocaleDateString() %></span>
+          </div>
+        <% } %>
+        <% } %>
+      </div>
+      <div class="card mt-3">
+        <div class="card-title">Schedules (<%= schedules.length %>)</div>
+        <% if (schedules.length === 0) { %><div class="muted">No schedules</div><% } else { %>
+        <% for (const s of schedules) { %>
+          <div class="flex-between" style="padding:8px 0;border-bottom:1px solid var(--border)">
+            <span><%= s.name %></span>
+            <span class="mono muted"><%= s.cron %> · <%= s.action %></span>
+          </div>
+        <% } %>
+        <% } %>
+      </div>
+      <div class="card mt-3">
+        <div class="card-title">Subusers (<%= subs.length %>)</div>
+        <% if (subs.length === 0) { %><div class="muted">None</div><% } else { %>
+        <% for (const s of subs) { %><div class="flex-between" style="padding:8px 0;border-bottom:1px solid var(--border)"><span><%= s.username %></span></div><% } %>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div>
+<%- include('../partials/music') %>
+<%- include('../partials/foot') %>
+<script>
+async function action(a) {
+  try {
+    await VP.api('/admin/servers/<%= vm.id %>/action', { method: 'POST', body: { action: a } });
+    VP.toast('Command sent', 'success');
+    setTimeout(() => location.reload(), 900);
+  } catch (e) { VP.toast(e.message, 'error'); }
+}
+async function del() {
+  const ok = await VP.confirmDialog('Permanently delete <%= vm.name %> and ALL data?', { title: 'Delete server?' });
+  if (!ok) return;
+  try {
+    await VP.api('/admin/servers/<%= vm.id %>/action', { method: 'POST', body: { action: 'delete' } });
+    VP.toast('Server deleted', 'success');
+    setTimeout(() => location.href = '/admin/servers', 800);
+  } catch (e) { VP.toast(e.message, 'error'); }
+}
+</script>

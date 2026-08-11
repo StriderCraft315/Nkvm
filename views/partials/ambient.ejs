@@ -1,0 +1,24 @@
+<%
+const bgMode = settings['panel.bg_mode'] || 'color';
+let bgColor = settings['panel.bg_color'] || '#0b1020';
+const overlay = settings['panel.bg_overlay'] || '0.55';
+const cover = settings['panel.bg_cover'] === '1' || settings['panel.bg_cover'] === true;
+%>
+<% if (bgMode === 'image') {
+  const img = settings['panel.bg_file'] || settings['panel.bg_url'] || '';
+  if (img) { %>
+    <div class="bg-layer" style="background:url('<%= img %>') center/<%= cover ? 'cover' : 'contain' %> no-repeat"></div>
+<% } %>
+<% } else if (bgMode === 'video') {
+  const vid = settings['panel.bg_video_file'] || settings['panel.bg_video_url'] || '';
+  if (vid) { %>
+    <div class="bg-layer"><video autoplay muted loop playsinline preload="auto" src="<%= vid %>"></video></div>
+<% } %>
+<% } else if (bgMode === 'gradient') { %>
+    <div class="bg-layer" style="background:radial-gradient(1200px 800px at 20% 10%, color-mix(in srgb, <%= settings['panel.accent'] || '#6366f1' %> 26%, transparent), transparent 60%), radial-gradient(1000px 700px at 85% 90%, color-mix(in srgb, #22d3ee 20%, transparent), transparent 55%), <%= bgColor %>"></div>
+<% } else { %>
+    <div class="bg-layer" style="background:<%= bgColor %>"></div>
+<% } %>
+<% if (settings['panel.bg_mode'] !== 'color') { %>
+<div class="bg-overlay" style="background:rgba(5,8,18,<%= overlay %>)"></div>
+<% } %>

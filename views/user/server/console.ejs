@@ -1,0 +1,211 @@
+<%- include('../../partials/head', { title: vm.name + ' - Console', styles: ['/vendor/xterm.min.css'], scripts: ['/socket.io/socket.io.js', '/vendor/xterm.min.js', '/vendor/addon-fit.min.js'] }) %>
+<%- include('../../partials/ambient') %>
+<%- include('../../partials/topbar') %>
+<%- include('../../partials/sidebar') %>
+<div class="main">
+  <div class="flex-between mb-3">
+    <h2 style="font-size:22px">Console · <%= vm.name %></h2>
+    <a class="btn btn-sm" href="/servers/<%= vm.id %>">Back</a>
+  </div>
+  <%- include('_tabs') %>
+
+  <div class="console-tabs">
+    <button class="console-tab active" id="tabVNC" onclick="showPanel('vnc')">VNC Desktop</button>
+    <button class="console-tab" id="tabSSH" onclick="showPanel('ssh')">SSH Terminal</button>
+  </div>
+
+  <div id="vncPanel">
+    <div class="console-toolbar">
+      <span id="vncState" class="pill pill-yellow">connecting...</span>
+      <button class="btn btn-sm btn-primary" id="btnVncConnect">Connect</button>
+      <button class="btn btn-sm" id="btnVncCtrlAltDel">Ctrl+Alt+Del</button>
+      <button class="btn btn-sm" id="btnVncScale">Fit to window</button>
+      <span class="muted">Graphical console (noVNC) · auto-connects while the server is running</span>
+    </div>
+    <div class="terminal vnc-host" id="vncHost"></div>
+  </div>
+
+  <div id="sshPanel" style="display:none">
+    <div class="console-toolbar">
+      <span id="connState" class="pill pill-yellow">connecting...</span>
+      <span class="muted">SSH over WebSocket · Ctrl+A sends escape · Ctrl+Alt+X disconnects</span>
+    </div>
+    <div class="terminal" id="terminal"></div>
+  </div>
+</div>
+<%- include('../../partials/music') %>
+<%- include('../../partials/foot') %>
+<script>
+(function () {
+  // ---------------- VNC (noVNC) ----------------
+  const vncHost = document.getElementById('vncHost');
+  const vncStateEl = document.getElementById('vncState');
+  const btnVncConnect = document.getElementById('btnVncConnect');
+  const btnVncScale = document.getElementById('btnVncScale');
+  let rfb = null;
+  let vncScale = true;
+  let vncManual = false;
+  let vncRetryTimer = null;
+  let vncRetries = 0;
+  const VNC_MAX_RETRIES = 200;
+
+  function setVncState(text, cls) {
+    vncStateEl.textContent = text;
+    vncStateEl.className = 'pill ' + (cls || 'pill-yellow');
+  }
+
+  function vncWsUrl() {
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    return proto + '://' + location.host + '/vncws/<%= vm.id %>?token=' + encodeURIComponent(vpToken());
+  }
+
+  function vncScheduleRetry() {
+    if (vncManual || vncRetryTimer) return;
+    if (vncRetries >= VNC_MAX_RETRIES) { setVncState('stopped retrying', 'pill-gray'); return; }
+    vncRetries++;
+    vncRetryTimer = setTimeout(() => { vncRetryTimer = null; vncConnect(); }, 3000);
+    setVncState('server not reachable - retrying (' + vncRetries + ')', 'pill-yellow');
+  }
+
+  async function vncConnect() {
+    if (rfb) { try { rfb.disconnect(); } catch (e) {} rfb = null; }
+    setVncState('connecting...');
+    try {
+      const { default: RFB } = await import('/vendor/novnc/core/rfb.js');
+      rfb = new RFB(vncHost, vncWsUrl());
+      rfb.scaleViewport = vncScale;
+      rfb.focusOnClick = true;
+      rfb.addEventListener('connect', () => {
+        setVncState('connected', 'pill-green');
+        vncRetries = 0;
+        btnVncConnect.textContent = 'Disconnect';
+      });
+      rfb.addEventListener('disconnect', (e) => {
+        const clean = e && e.detail && e.detail.clean;
+        rfb = null;
+        btnVncConnect.textContent = 'Connect';
+        if (clean) setVncState('disconnected', 'pill-gray');
+        else vncScheduleRetry();
+      });
+      rfb.addEventListener('securityfailure', (e) => {
+        setVncState('access denied', 'pill-red');
+        rfb = null;
+        btnVncConnect.textContent = 'Connect';
+      });
+      rfb.addEventListener('credentialsrequired', () => {
+        setVncState('VNC password required', 'pill-red');
+        rfb = null;
+        btnVncConnect.textContent = 'Connect';
+      });
+    } catch (e) {
+      setVncState('failed to load noVNC', 'pill-red');
+    }
+  }
+
+  function vncDisconnect() {
+    vncManual = true;
+    if (vncRetryTimer) { clearTimeout(vncRetryTimer); vncRetryTimer = null; }
+    if (rfb) { try { rfb.disconnect(); } catch (e) {} rfb = null; }
+    setVncState('disconnected', 'pill-gray');
+    btnVncConnect.textContent = 'Connect';
+  }
+
+  btnVncConnect.onclick = () => {
+    if (rfb) { vncDisconnect(); return; }
+    vncManual = false;
+    vncConnect();
+  };
+  document.getElementById('btnVncCtrlAltDel').onclick = () => { if (rfb) rfb.sendCtrlAltDel(); };
+  btnVncScale.onclick = () => {
+    vncScale = !vncScale;
+    if (rfb) rfb.scaleViewport = vncScale;
+    btnVncScale.textContent = vncScale ? 'Fit to window' : '100%';
+  };
+
+  // ---------------- SSH Terminal (over WebSocket) ----------------
+  const termEl = document.getElementById('terminal');
+  const stateEl = document.getElementById('connState');
+  let term, socket, connected = false;
+
+  function setState(text, cls) {
+    stateEl.textContent = text;
+    stateEl.className = 'pill ' + (cls || 'pill-yellow');
+  }
+
+  function initTerm() {
+    if (term) { term.dispose(); term = null; }
+    term = new Terminal({
+      cursorBlink: true,
+      fontSize: 13,
+      fontFamily: 'JetBrains Mono, Consolas, monospace',
+      theme: { background: '#0b0f1c', foreground: '#e2e8f0', cursor: '#22d3ee' },
+      scrollback: 5000,
+      convertEol: true,
+    });
+    const fit = new FitAddon.FitAddon();
+    term.loadAddon(fit);
+    term.open(termEl);
+    fit.fit();
+    window.__fit = fit;
+
+    term.onData((data) => {
+      if (connected && socket) socket.emit('console:input', data);
+    });
+
+    window.addEventListener('resize', () => { try { fit.fit(); sshResize(); } catch (e) {} });
+    term.onResize(({ cols, rows }) => { if (socket && connected) socket.emit('console:resize', { cols, rows }); });
+  }
+
+  function sshResize() {
+    if (term && socket && connected) socket.emit('console:resize', { cols: term.cols, rows: term.rows });
+  }
+
+  function sshConnect() {
+    if (socket) { socket.disconnect(); socket = null; }
+    socket = io({
+      transports: ['websocket', 'polling'],
+      auth: { token: vpToken() },
+      reconnection: true,
+      reconnectionDelay: 2000,
+    });
+    socket.on('connect', () => {
+      setState('connected', 'pill-green');
+      connected = true;
+      socket.emit('console:join', { vmId: <%= vm.id %> });
+      setTimeout(sshResize, 200);
+    });
+    socket.on('console:ready', () => { setState('streaming', 'pill-green'); term.clear(); });
+    socket.on('console:data', (d) => { if (term) term.write(d); });
+    socket.on('console:error', (m) => {
+      setState('error', 'pill-red');
+      if (term) term.writeln('\r\n\x1b[31m' + m + '\x1b[0m\r\n');
+    });
+    socket.on('console:close', () => {
+      setState('stream closed', 'pill-gray');
+      connected = false;
+    });
+    socket.on('disconnect', () => {
+      connected = false;
+      setState('disconnected - retrying...', 'pill-yellow');
+    });
+    socket.on('connect_error', () => setState('cannot reach console server', 'pill-red'));
+  }
+
+  // ---------------- tab switching ----------------
+  window.showPanel = function showPanel(name) {
+    document.getElementById('tabVNC').classList.toggle('active', name === 'vnc');
+    document.getElementById('tabSSH').classList.toggle('active', name === 'ssh');
+    document.getElementById('vncPanel').style.display = name === 'vnc' ? '' : 'none';
+    document.getElementById('sshPanel').style.display = name === 'ssh' ? '' : 'none';
+    if (name === 'vnc') {
+      if (!rfb) vncConnect();
+    } else if (window.__fit) {
+      try { window.__fit.fit(); sshResize(); } catch (e) {}
+    }
+  };
+
+  vncConnect();
+  initTerm();
+  sshConnect();
+})();
+</script>

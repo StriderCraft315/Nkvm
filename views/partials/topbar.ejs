@@ -1,0 +1,24 @@
+<%
+const panelName = settings['panel.name'] || 'vpanel';
+let logo = '';
+if (settings['panel.logo_mode'] === 'upload' && settings['panel.logo_file']) logo = settings['panel.logo_file'];
+else if (settings['panel.logo_mode'] === 'url' && settings['panel.logo_url']) logo = settings['panel.logo_url'];
+%>
+<div class="topbar">
+  <button class="icon-btn hamburger" onclick="document.querySelector('.sidebar').classList.toggle('open')" aria-label="menu">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+  </button>
+  <a href="/dashboard" class="brand">
+    <% if (logo) { %><img src="<%= logo %>" alt="logo"/><% } %>
+    <span class="brand-text"><%= panelName %></span>
+  </a>
+  <div class="topbar-right">
+    <% if (user) { %>
+    <div class="topbar-search"><input type="search" placeholder="Search servers..." id="globalSearch"/></div>
+    <a class="icon-btn" href="/notifications" title="Notifications">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+    </a>
+    <div class="avatar"><% if (user.avatar) { %><img src="<%= user.avatar %>"/><% } else { %><%= (user.username[0] || 'U').toUpperCase() %><% } %></div>
+    <% } %>
+  </div>
+</div>

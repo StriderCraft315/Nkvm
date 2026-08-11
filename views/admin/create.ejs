@@ -1,0 +1,124 @@
+<%- include('../partials/head', { title: 'Create Server' }) %>
+<%- include('../partials/ambient') %>
+<%- include('../partials/topbar') %>
+<%- include('../partials/sidebar') %>
+<div class="main">
+  <div class="flex-between mb-3">
+    <h2 style="font-size:22px">Create Virtual Machine</h2>
+    <a class="btn btn-sm" href="/admin/servers">Back to servers</a>
+  </div>
+
+  <div class="card">
+    <div class="card-title">1 · Operating System</div>
+    <div class="grid grid-3">
+      <% for (let i = 0; i < osList.length; i++) { const o = osList[i]; %>
+        <label class="os-card" style="cursor:pointer;border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;align-items:center;gap:12px;background:var(--glass)">
+          <input type="radio" name="os" value="<%= o[0] %>" <%= i === 0 ? 'checked' : '' %> style="width:16px;height:16px;margin:0" onchange="selectOs(this)"/>
+          <div>
+            <div style="font-weight:600"><%= o[0] %></div>
+            <div class="muted mono truncate" style="max-width:230px"><%= o[3] %></div>
+          </div>
+        </label>
+      <% } %>
+    </div>
+  </div>
+
+  <div class="card mt-3">
+    <div class="card-title">2 · Configuration</div>
+    <div class="form-row">
+      <div class="form-group"><label>VM Name *</label><input id="fName" placeholder="my-vm" required/><div class="form-hint">Letters, numbers, hyphens, underscores</div></div>
+      <div class="form-group"><label>Hostname</label><input id="fHost" placeholder="auto from name"/></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>SSH Username</label><input id="fUser" placeholder="root"/></div>
+      <div class="form-group"><label>SSH Password</label><input id="fPass" placeholder="auto generated"/></div>
+    </div>
+    <div class="form-row-3">
+      <div class="form-group"><label>Memory (MB)</label><input id="fMem" type="number" value="<%= settings['vm.default_memory'] || '2048' %>"/></div>
+      <div class="form-group"><label>CPUs</label><input id="fCpus" type="number" value="<%= settings['vm.default_cpus'] || '2' %>"/></div>
+      <div class="form-group"><label>Disk Size</label><input id="fDisk" value="<%= settings['vm.default_disk'] || '20G' %>"/></div>
+    </div>
+    <div class="form-group">
+      <label>SSH Port (auto from <%= settings['vm.auto_port_min'] || '25501' %>-<%= settings['vm.auto_port_max'] || '25600' %>)</label>
+      <input id="fPort" placeholder="auto"/>
+    </div>
+    <div class="form-group">
+      <label>Port Forwards</label>
+      <input id="fFwds" placeholder="8080:80, 8443:443"/>
+    </div>
+    <div class="form-row">
+      <div class="check"><input type="checkbox" id="fStartBoot"/> Start on panel boot</div>
+      <div class="check"><input type="checkbox" id="fGui"/> GUI mode (show window)</div>
+    </div>
+    <div class="form-group mt-2"><label>Owner (default: you)</label>
+      <select id="fOwner">
+        <option value="<%= user.id %>"><%= user.username %> (you)</option>
+        <% for (const u of users) { %><option value="<%= u.id %>"><%= u.username %> · <%= u.email %></option><% } %>
+      </select>
+    </div>
+  </div>
+
+  <div class="card mt-3">
+    <div class="card-title">3 · Image Source</div>
+    <div class="check"><input type="radio" name="imgSrc" value="download" checked onchange="imgSrcChanged('download')"/> Download cloud image (recommended)</div>
+    <div class="check mt-1"><input type="radio" name="imgSrc" value="upload" onchange="imgSrcChanged('upload')"/> Upload qcow2 image</div>
+    <div id="uploadBox" style="display:none" class="mt-2">
+      <label class="btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        Choose image file
+        <input type="file" id="fImg" accept=".qcow2,.img,.qcow" style="display:none"/>
+      </label>
+      <span id="imgName" class="muted ml-2"></span>
+    </div>
+  </div>
+
+  <div class="card mt-3">
+    <button class="btn btn-primary btn-block" style="padding:13px" id="btnCreate" onclick="createVm()">Create Server</button>
+  </div>
+</div>
+<%- include('../partials/music') %>
+<%- include('../partials/foot') %>
+<script>
+function imgSrcChanged(v) {
+  document.getElementById('uploadBox').style.display = v === 'upload' ? 'block' : 'none';
+}
+document.getElementById('fImg').addEventListener('change', function () {
+  document.getElementById('imgName').textContent = this.files[0] ? this.files[0].name : '';
+});
+function selectOs(input) {
+  input.closest('label').style.borderColor = 'var(--accent)';
+  document.querySelectorAll('.os-card').forEach((c) => { if (c !== input.closest('label')) c.style.borderColor = 'var(--border)'; });
+}
+async function createVm() {
+  const btn = document.getElementById('btnCreate');
+  btn.disabled = true;
+  const fd = new FormData();
+  fd.append('os', (document.querySelector('input[name="os"]:checked') || {}).value);
+  fd.append('name', document.getElementById('fName').value);
+  fd.append('hostname', document.getElementById('fHost').value);
+  fd.append('username', document.getElementById('fUser').value);
+  fd.append('password', document.getElementById('fPass').value);
+  fd.append('memory', document.getElementById('fMem').value);
+  fd.append('cpus', document.getElementById('fCpus').value);
+  fd.append('disk_size', document.getElementById('fDisk').value);
+  fd.append('ssh_port', document.getElementById('fPort').value);
+  fd.append('port_forwards', JSON.stringify((document.getElementById('fFwds').value || '').split(',').map(s=>s.trim()).filter(Boolean).map(p=>{const[h,g]=p.split(':');return{host:parseInt(h,10),guest:parseInt(g,10)}})));
+  fd.append('start_on_boot', document.getElementById('fStartBoot').checked ? '1' : '0');
+  fd.append('gui_mode', document.getElementById('fGui').checked ? '1' : '0');
+  fd.append('owner_id', document.getElementById('fOwner').value);
+  if ((document.querySelector('input[name="imgSrc"]:checked') || {}).value === 'upload') {
+    const f = document.getElementById('fImg').files[0];
+    if (f) fd.append('image', f);
+  }
+  try {
+    const r = await fetch('/admin/servers/create', { method: 'POST', body: fd });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Failed to create server');
+    VP.toast('Server created! SSH port: ' + d.vm.ssh_port, 'success');
+    setTimeout(() => location.href = '/admin/servers/' + d.vm.id, 900);
+  } catch (e) {
+    VP.toast(e.message, 'error');
+    btn.disabled = false;
+  }
+}
+</script>
