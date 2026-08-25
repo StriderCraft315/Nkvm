@@ -1,259 +1,188 @@
+<div align="center">
 
-# 🚀 VPanel Pro
+# ⚡ vPanel Pro v2.0
+### Next-Gen QEMU/KVM Virtual Machine Management Web Panel
 
-Full-featured **QEMU/KVM virtual server management panel** built with Node.js, Express, better-sqlite3, and Socket.IO.
+[![Node.js](https://img.shields.io/badge/Node.js-v18+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org)
+[![Express](https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com)
+[![QEMU](https://img.shields.io/badge/QEMU-Virtualization-FF6600?style=for-the-badge&logo=qemu&logoColor=white)](https://www.qemu.org/)
+[![SQLite](https://img.shields.io/badge/better--sqlite3-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://github.com/WiseLibs/better-sqlite3)
+[![License](https://img.shields.io/badge/License-MIT-6366F1?style=for-the-badge)](LICENSE)
 
-## ✨ Features
-
-- 🖥️ **QEMU/KVM VM Management**
-  - Create, start, stop, restart
-  - Resize
-  - Backup & restore
-  - Scheduled tasks
-
-- 🖥️ **Graphical Console**
-  - VNC / noVNC
-  - Auto-connecting web console
-  - Works even when guest SSH authentication fails
-
-- 💻 **SSH Terminal**
-  - Interactive shell
-  - WebSocket communication
-  - Socket.IO + xterm.js
-
-- 📁 **File Manager**
-  - Powered by the in-guest **vPanel Agent**
-  - Automatic SSH fallback
-  - List / read / write
-  - Upload / download
-  - Create folders
-  - Delete / rename
-  - chmod permissions
-
-- 👥 **Multi-user System**
-  - User accounts
-  - Sub-users per server
-  - Admin panel
-
-- ☁️ **Cloud-init Provisioning**
-  - Automatic SSH configuration
-  - Automatic vPanel Agent installation
-  - First-boot provisioning
-
-- 💾 **Backups & Schedules**
-  - Create backups
-  - Restore backups
-  - Download backups
-  - Cron-based scheduling
+*A high-performance, dark glassmorphic web control panel designed for hosting, managing, and automating QEMU virtual servers.*
 
 ---
 
-## 📋 Requirements
+</div>
 
-Supported operating systems:
+## 🌟 Highlights & Key Features
 
-- Debian / Ubuntu
-- Fedora / RHEL
-- Arch Linux
+### 🎨 1. Cosmic Glassmorphism UI & Studio
+- **Deep Slate Dark Design**: Modern translucent glass cards with glowing accent halo borders (`--panel-blur`, `--panel-transparency`).
+- **Integrated 4K Wallpaper Browser**: Browse, search, preview, favorite, and 1-click apply high-res 4K wallpapers directly from [4kwallpapers.com](https://4kwallpapers.com/) across 15+ categories (*Anime, Space, Dark/AMOLED, Nature, Supercars, Gaming, Abstract, etc.*).
+- **Interactive Sliders**: Real-time CSS Backdrop Blur (0px – 40px) and UI Transparency (0% – 100%) controls without page reloads.
+- **Custom Media Backgrounds**: Upload local images or looping video backgrounds (`.mp4`, `.webm`).
 
-Required:
+### ⚡ 2. Intuitive VM Creation Wizard
+- **⚡ Hardware Sizing Presets**: 1-click quick presets (*Starter, Standard, Compute/Dev, Powerhouse*).
+- **Dual-Control Resource Sliders**: Real-time synchronized range sliders and inputs for vCPUs and RAM.
+- **Filterable Distro Grid**: Cloud-image support for **Ubuntu** (22.04, 24.04), **Debian** (11, 12, 13), **Fedora** (40), **CentOS Stream**, **AlmaLinux**, and **Rocky Linux**.
+- **Live Deployment Blueprint**: Real-time sticky summary card updating specifications and cost calculations as you configure.
 
-- Linux host
-- Root access
-- Node.js 18+
-- QEMU system emulator
-- `qemu-img`
-- `cloud-localds`
-- `wget`
-- `openssl`
-- `python3`
+### 💻 3. Next-Gen SSH Terminal & Serial Boot Logs
+- **Integrated Xterm.js Console**: Responsive web terminal connecting directly to guest instances over SSH.
+- **Kernel Boot & Startup Logs**: Dual-tab interface streaming live QEMU serial output, kernel messages, and cloud-init progress in real time.
+- **Toolbar Utilities**: Auto-refresh toggle (3s polling), auto-scroll, and 1-click clipboard copy.
 
-> The installer installs Node.js 20 LTS automatically if Node.js is missing.
+### 📁 4. High-Performance File Manager
+- **Guest Agent & SSH Dual-Engine**: Ultra-fast file operations with automatic graceful fallback.
+- **Accurate File Size Sizing**: Monospace human-readable formatting (`Bytes, KB, MB, GB`).
+- **Large Code Editor Modal**: Fullscreen multi-line editor (`width: min(1000px, 96vw)`) with monospace fonts and UTF-8 support.
+- **Multi-File Uploads**: Drag-and-drop or select multi-file uploads with payload support up to 200MB+.
+
+### 🛡️ 5. Multi-User & Enterprise Security
+- **Role-Based Access Control**: Root Administrators and Standard Users.
+- **Subuser Delegation**: Assign granular per-server permissions (*Console, File Manager, Backups, Power Controls*).
+- **Two-Factor Authentication (2FA)**: TOTP authenticator app support (Google Authenticator, Authy).
+- **Comprehensive Audit Logs**: Real-time event timeline logging all VM power actions, logins, and permission changes.
+
+### 💾 6. Snapshots & Cron Automation
+- **Instant Disk Backups**: 1-click snapshot creation, restoration, and raw disk download.
+- **Automated Scheduling**: Standard 5-field Cron automation for automatic backups, restarts, and routine maintenance.
 
 ---
 
-## ⚡ Quick Install
+## 🏗️ Architecture & Tech Stack
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│                       vPanel Pro UI                         │
+│   (Glassmorphism CSS • EJS Templates • Socket.IO • Xterm)   │
+└──────────────────────────────┬──────────────────────────────┘
+                               │ HTTP / WebSocket (Port 3001)
+┌──────────────────────────────▼──────────────────────────────┐
+│                    Node.js + Express Core                   │
+│  (Auth Middleware • SQLite/better-sqlite3 • VM Orchestrator)│
+└──────────────┬──────────────────────────────┬───────────────┘
+               │                              │
+┌──────────────▼──────────────┐┌──────────────▼───────────────┐
+│     QEMU Hypervisor Engine  ││     vPanel Guest Agent       │
+│  (-drive, -smp, -m, -netdev)││  (Python HTTP Daemon / SSH)  │
+└─────────────────────────────┘└──────────────────────────────┘
+```
+
+---
+
+## 📋 System Requirements
+
+- **Operating System**: Linux (Ubuntu 20.04+, Debian 11+, RHEL/CentOS 9+, Fedora, Arch Linux)
+- **Node.js**: v18.0.0 or higher (Node 20+ recommended)
+- **Hypervisor**: QEMU (`qemu-system-x86_64`, `qemu-img`)
+- **Utilities**: `cloud-image-utils` (`cloud-localds`), `wget`, `openssl`, `python3`
+
+---
+
+## 🚀 Quick Start & Installation
+
+### Option 1: Automated Setup (Recommended)
 
 ```bash
+# Clone the repository
 git clone https://github.com/nobita329/vpanel-pro.git
 cd vpanel-pro
-sudo bash install.sh --admin-pass 'admin'
-````
 
-### Installer Process
+# Run the automated installer
+sudo bash install.sh --admin-pass 'your_secure_password'
+```
 
-The installer will:
-
-1. Install required system dependencies
-2. Install QEMU and cloud-image-utils
-3. Install Node.js if required
-4. Run `npm install`
-5. Run `npm run build`
-6. Download noVNC for the graphical console
-7. Generate `.env`
-8. Generate a random `JWT_SECRET`
-9. Create the admin account
-10. Start VPanel Pro with PM2
-
-Use `--no-pm2` if you want to run VPanel Pro directly with Node.js.
-
----
-
-## 🛠️ Manual Setup
+### Option 2: Manual Installation
 
 ```bash
+# 1. Clone repository and install dependencies
+git clone https://github.com/nobita329/vpanel-pro.git
+cd vpanel-pro
 npm install
+
+# 2. Build assets
 npm run build
-cp .env.example .env
+
+# 3. Create administrator account
 npm run createuser
+
+# 4. Start vPanel Pro
 npm start
 ```
 
-Or with PM2:
+### Production Deployment with PM2
 
 ```bash
+# Start cluster process
 pm2 start ecosystem.config.js
-```
 
-### 🌐 Access
-
-Panel:
-
-```text
-http://<host>:3001
-```
-
-API:
-
-```text
-http://<host>:3002
+# Save process list for system reboot
+pm2 save
+pm2 startup
 ```
 
 ---
 
-## ⚙️ Configuration
+## 🌐 Default Ports & Access
 
-Edit the `.env` file:
-
-| Variable                  |            Default | Description               |
-| ------------------------- | -----------------: | ------------------------- |
-| `PANEL_PORT`              |             `3001` | Web panel port            |
-| `API_PORT`                |             `3002` | REST API port             |
-| `JWT_SECRET`              |                  — | JWT authentication secret |
-| `AUTO_PORT_MIN/MAX`       |      `25501/25600` | Automatic SSH port range  |
-| `AUTO_VNC_PORT_MIN/MAX`   |      `25901/26000` | Automatic VNC port range  |
-| `AUTO_AGENT_PORT_MIN/MAX` |      `26101/26200` | vPanel Agent port range   |
-| `VM_DIR`                  |            `./vms` | VM disk storage           |
-| `DB_PATH`                 | `./data/vpanel.db` | SQLite database           |
-| `ALLOW_REGISTER`          |                `1` | Enable user registration  |
-
-> ⚠️ **Important:** Change `JWT_SECRET` before using VPanel Pro in production.
+| Service | Default URL | Description |
+| :--- | :--- | :--- |
+| **Web Panel** | `http://<host_ip>:3001` | Main user dashboard and management interface |
+| **REST API** | `http://<host_ip>:3001/api` | RESTful API for automation & integrations |
+| **VM Port Range** | `25501 - 25600` | Dynamic host-forwarded SSH ports |
+| **Agent Port Range**| `26101 - 26200` | Internal guest-daemon communication |
 
 ---
 
-## 🔌 Access Stack
+## ⚙️ Configuration Environment (`.env`)
 
-| Feature        | Technology                         |
-| -------------- | ---------------------------------- |
-| Console        | noVNC → WebSocket proxy → QEMU VNC |
-| Terminal       | xterm.js → Socket.IO → SSH shell   |
-| File Manager   | Web UI → REST API → vPanel Agent   |
-| Database       | SQLite / better-sqlite3            |
-| Backend        | Node.js + Express                  |
-| Real-time      | Socket.IO                          |
-| Virtualization | QEMU/KVM                           |
+```ini
+# Panel Ports & Server
+PANEL_PORT=3001
+API_PORT=3002
+NODE_ENV=production
 
-### Console
+# Security & Secrets
+JWT_SECRET=your_super_secret_jwt_key_here
+ALLOW_REGISTER=1
+FORCE_TFA=0
 
-```text
-noVNC
-   ↓
-WebSocket Proxy
-   ↓
-/vncws/:vmId
-   ↓
-QEMU
-   ↓
-VNC 127.0.0.1:<port>
-```
+# Storage Locations
+VM_DIR=./vms
+DB_PATH=./data/vpanel.db
 
-### File Manager
-
-```text
-Web File Manager
-       ↓
-   REST API
-       ↓
- vPanel Agent
-       ↓
- Guest VM
-```
-
-The vPanel Agent uses a Python HTTP API with bearer-token authentication.
-
-If the agent is unavailable, VPanel Pro automatically falls back to SSH.
-
----
-
-## 🔐 Security
-
-VPanel Pro includes several security mechanisms:
-
-* 🔑 Unique agent token per VM
-* 🔒 Agent authentication using bearer tokens
-* 🛡️ Agent token stored inside the guest
-* 🔐 VNC bound to `127.0.0.1`
-* 🔒 Authenticated panel-side VNC proxy
-* 🎫 JWT-based authentication
-
-Each VM receives its own `vm.agent_token`, generated as a 32-character hexadecimal token.
-
-The agent token is **never exposed through the API**.
-
-Inside the guest, the token is stored at:
-
-```text
-/etc/vpanel-agent.token
+# Automatic Port Forwarding Ranges
+AUTO_PORT_MIN=25501
+AUTO_PORT_MAX=25600
+AUTO_AGENT_PORT_MIN=26101
+AUTO_AGENT_PORT_MAX=26200
 ```
 
 ---
 
-## 🧪 Beta
+## 🔌 API Reference Overview
 
-**VPanel Pro v2.1 — Beta Test**
-
-🚧 This version is currently under beta testing.
-
-### Coming in v2.1
-
-* 🎨 New UI
-* ⚡ Performance improvements
-* 🖥️ Better VPS management
-* 🛠️ More management tools
-* 🐛 Bug fixes
-* 🔒 Stability improvements
-* 🚀 More features
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/login` | Authenticate and obtain JWT bearer token |
+| `GET` | `/api/vms` | List all accessible virtual machines |
+| `POST` | `/api/vms/:id/action` | Trigger power action (`start`, `stop`, `restart`, `kill`) |
+| `GET` | `/api/vms/:id/bootlog` | Stream kernel boot & serial output logs |
+| `GET` | `/api/vms/:id/files?path=/` | List files and directories in guest filesystem |
+| `GET` | `/api/vms/:id/files/download` | Download file from guest |
+| `POST` | `/api/vms/:id/files/upload` | Upload binary/text file to guest |
+| `GET` | `/api/wallpapers?category=all` | Browse 4K wallpaper library with search & pagination |
+| `POST` | `/api/wallpapers/apply` | 1-click apply wallpaper and glassmorphism styles |
 
 ---
 
 ## 📜 License
 
-See the repository license for details.
+Distributed under the MIT License. See `LICENSE` for more information.
 
----
-
-## ⭐ Support
-
-If VPanel Pro is useful to you:
-
-⭐ Star the repository
-🐛 Report bugs
-💡 Suggest features
-🤝 Contribute to the project
-
-**VPanel Pro — Manage your virtual servers with ease. 🚀**
-
-```
-
-Is version ko `README.md` me paste karoge to GitHub par kaafi clean/professional lagega.
-```
+<div align="center">
+  <sub>Built with ❤️ by <a href="https://github.com/nobita329">Nobita</a> for developers and sysadmins worldwide.</sub>
+</div>
