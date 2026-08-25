@@ -155,12 +155,35 @@ function buildQemuArgs(vm) {
   }
 
   args.push(
+    '-serial', `file:${path.join(dir, 'boot.log')}`,
     '-vga', 'std',
     '-pidfile', path.join(dir, 'qemu.pid'),
     '-daemonize',
   );
 
   return args;
+}
+
+function getBootLog(vm) {
+  const dir = vmDir(vm);
+  let content = '';
+  const bootLog = path.join(dir, 'boot.log');
+  const qemuLog = path.join(dir, 'qemu.log');
+  if (fs.existsSync(bootLog)) {
+    try {
+      const data = fs.readFileSync(bootLog, 'utf8');
+      if (data && data.trim()) content += data;
+    } catch (_) {}
+  }
+  if (fs.existsSync(qemuLog)) {
+    try {
+      const qdata = fs.readFileSync(qemuLog, 'utf8');
+      if (qdata && qdata.trim()) {
+        content = (content ? content + '\n\n=== QEMU System Output ===\n' : '') + qdata;
+      }
+    } catch (_) {}
+  }
+  return content || '[Boot Log] No boot output recorded yet. Start the server to stream boot logs.';
 }
 
 function pidOf(vm) {
@@ -582,5 +605,5 @@ function startOnBootAll() {
 module.exports = {
   VM_DIR, dbVms, getVm, create, start, stop, restart, remove, update,
   resizeDisk, isRunning, statusOf, serializeVm, canAccess, allocPort, allocVncPort, allocAgentPort,
-  parseForwards, usage, uptimeSeconds, memUsage, totalDiskUsage, startOnBootAll, getOsList,
+  parseForwards, usage, uptimeSeconds, memUsage, totalDiskUsage, startOnBootAll, getOsList, getBootLog,
 };

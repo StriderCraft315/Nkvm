@@ -18,7 +18,7 @@ function agentRequest(vm, { method = 'GET', path = '/', headers = {}, body } = {
       port: vm.agent_port,
       method,
       path,
-      timeout: 20000,
+      timeout: 2500,
       headers: outHeaders,
     }, (res) => {
       const chunks = [];

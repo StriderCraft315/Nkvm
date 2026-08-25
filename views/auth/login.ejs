@@ -1,36 +1,60 @@
 <%- include('../partials/head', { title: 'Login' }) %>
 <%- include('../partials/ambient') %>
 <div class="auth-wrap">
-  <div class="auth-card">
-    <div class="auth-logo">
-      <% const pn = settings['panel.name'] || 'vpanel'; let lg='';
+  <div class="auth-card" style="position:relative;overflow:hidden">
+    <!-- Ambient glow behind card -->
+    <div style="position:absolute;top:-50px;left:50%;transform:translateX(-50%);width:200px;height:120px;background:var(--accent);filter:blur(80px);opacity:0.35;pointer-events:none"></div>
+
+    <div class="auth-logo" style="display:flex;flex-direction:column;align-items:center;margin-bottom:18px">
+      <% const pn = settings['panel.name'] || 'vPanel Pro'; let lg='';
         if (settings['panel.logo_mode']==='upload' && settings['panel.logo_file']) lg=settings['panel.logo_file'];
         else if (settings['panel.logo_mode']==='url' && settings['panel.logo_url']) lg=settings['panel.logo_url']; %>
-      <% if (lg) { %><img src="<%= lg %>"/><% } else { %><span style="font-size:40px;font-weight:800;background:linear-gradient(90deg,#fff,var(--accent-2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent"><%= pn %></span><% } %>
+      <% if (lg) { %>
+        <img src="<%= lg %>" style="height:48px;border-radius:12px;margin-bottom:8px"/>
+      <% } else { %>
+        <div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg, var(--accent), var(--accent-2));display:grid;place-items:center;color:#fff;box-shadow:0 0 20px var(--accent-glow);margin-bottom:12px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="24" height="24"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01M6 18h.01"/></svg>
+        </div>
+        <span style="font-size:26px;font-weight:800;letter-spacing:-0.5px;background:linear-gradient(90deg,#fff 40%,var(--accent-2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent"><%= pn %></span>
+      <% } %>
     </div>
-    <h1 class="auth-title">Welcome back</h1>
-    <p class="auth-sub">Sign in to manage your servers</p>
-    <% if (typeof error !== 'undefined' && error) { %><div class="alert alert-error"><%= error %></div><% } %>
-    <% if (typeof success !== 'undefined' && success) { %><div class="alert alert-success"><%= success %></div><% } %>
+
+    <h1 class="auth-title" style="font-size:20px;font-weight:700">Sign in to your account</h1>
+    <p class="auth-sub" style="margin-bottom:22px">Control and manage your virtual cloud instances</p>
+
+    <% if (typeof error !== 'undefined' && error) { %>
+      <div class="alert alert-error"><%= error %></div>
+    <% } %>
+    <% if (typeof success !== 'undefined' && success) { %>
+      <div class="alert alert-success"><%= success %></div>
+    <% } %>
+
     <form method="post" action="/login">
       <div class="form-group">
         <label for="username">Username or Email</label>
-        <input type="text" id="username" name="username" value="<%= typeof username !== 'undefined' ? username : '' %>" required autofocus/>
+        <input type="text" id="username" name="username" value="<%= typeof username !== 'undefined' ? username : '' %>" required autofocus placeholder="admin"/>
       </div>
       <div class="form-group">
-        <label for="password">Password</label>
-        <input type="password" id="password" name="password" required/>
+        <div class="flex-between mb-1">
+          <label for="password" style="margin:0">Password</label>
+        </div>
+        <input type="password" id="password" name="password" required placeholder="••••••••"/>
       </div>
       <% if (typeof tfa !== 'undefined' && tfa) { %>
       <div class="form-group">
-        <label for="code">Two-Factor Code</label>
+        <label for="code">Two-Factor Authenticator Code</label>
         <input type="text" id="code" name="code" placeholder="6-digit code" inputmode="numeric" required/>
       </div>
       <% } %>
-      <button type="submit" class="btn btn-primary btn-block">Sign In</button>
+      <button type="submit" class="btn btn-primary btn-block mt-3" style="padding:12px;font-size:14px;font-weight:700">
+        Sign In
+      </button>
     </form>
-    <div class="auth-foot">
-      <% if (settings['security.allow_register'] === '1') { %><a href="/register">Create account</a> · <% } %>
+
+    <div class="auth-foot" style="margin-top:22px">
+      <% if (settings['security.allow_register'] === '1') { %>
+        <a href="/register">Create an account</a> · 
+      <% } %>
       <a href="/forgot">Forgot password?</a>
     </div>
   </div>

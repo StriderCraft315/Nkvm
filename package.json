@@ -1,7 +1,7 @@
 {
-  "name": "vpanel",
-  "version": "1.0.0",
-  "description": "vpanel - Full QEMU VM management panel built with Node.js",
+  "name": "vpanel-pro",
+  "version": "2.0.0",
+  "description": "vPanel Pro - Next-Gen QEMU Virtual Machine Management Web Panel",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",

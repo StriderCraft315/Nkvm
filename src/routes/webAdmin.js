@@ -18,7 +18,7 @@ router.use(requireAdmin);
 
 function render(res, view, vars = {}) {
   res.render(`admin/${view}`, {
-    page: view,
+    page: 'admin-' + view,
     user: res.req.user,
     settings: settings.all(),
     ...vars,
@@ -276,27 +276,31 @@ router.post('/admin/settings/music-clear', (req, res) => {
   res.json({ ok: true });
 });
 
+const wallpaperService = require('../services/wallpaperService');
+
 router.get('/admin/wallpapers', async (req, res) => {
-  const apiKey = settings.get('panel.wallpapers_api_key') || config.wallpaperApiKey;
-  if (!apiKey) return res.status(400).json({ error: 'No 4kwallpapers API key configured. Add it in Settings.' });
   try {
-    const r = await fetch(`https://api.4kwallpapers.com/v1/wallpaper/random?api_key=${apiKey}&maxCategoryId=6&page=${req.query.page || 1}`, { signal: AbortSignal.timeout(10000) });
-    const json = await r.json();
-    const list = Array.isArray(json) ? json : (json.wallpapers || []);
-    fs.writeFileSync(path.join(config.root, 'data/wallpapers.json'), JSON.stringify(list));
-    return res.json({ ok: true, wallpapers: list });
+    const data = await wallpaperService.getWallpapers({
+      category: req.query.category,
+      page: req.query.page,
+      query: req.query.q || req.query.query,
+    });
+    res.json(data);
   } catch (e) {
-    return res.status(500).json({ error: 'Failed to fetch wallpapers: ' + e.message });
+    res.status(500).json({ ok: false, error: 'Failed to fetch wallpapers: ' + e.message });
   }
 });
 
 router.post('/admin/wallpapers/apply', express.json(), (req, res) => {
-  const { url, thumbnail } = req.body;
-  if (!url) return res.status(400).json({ error: 'No url' });
+  const { url, thumbnail, blur, transparency, overlay } = req.body;
+  if (!url) return res.status(400).json({ error: 'No url provided' });
   settings.set('panel.bg_mode', 'image');
   settings.set('panel.bg_url', url);
   if (thumbnail) settings.set('panel.bg_thumb', thumbnail);
-  return res.json({ ok: true });
+  if (blur !== undefined) settings.set('panel.bg_blur', String(blur));
+  if (transparency !== undefined) settings.set('panel.bg_transparency', String(transparency));
+  if (overlay !== undefined) settings.set('panel.bg_overlay', String(overlay));
+  return res.json({ ok: true, message: 'Wallpaper applied successfully' });
 });
 
 module.exports = router;

@@ -109,80 +109,125 @@
   <!-- ============ APPEARANCE ============ -->
   <div class="tab-pane" id="tab-appearance" style="display:none">
     <div class="card">
-      <div class="card-title">Background</div>
+      <div class="flex-between mb-3">
+        <div class="card-title" style="margin:0">Panel Appearance &amp; Glassmorphism</div>
+        <button type="button" class="btn btn-primary btn-sm" onclick="openCustomizationModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 10 10 0 0 0 9.54-13.88A10 10 0 0 0 12 2z"/></svg>
+          Open 4K Wallpaper &amp; Theme Studio
+        </button>
+      </div>
+
       <form method="post" action="/admin/settings/general">
-        <div class="grid grid-2">
+        <div class="grid grid-2" style="gap:24px">
           <div>
             <div class="form-group">
               <label>Background Mode</label>
               <select name="panel.bg_mode" onchange="bgModeChanged(this.value)">
-                <option value="color" <%= all['panel.bg_mode'] === 'color' ? 'selected' : '' %>>Solid color</option>
-                <option value="image" <%= all['panel.bg_mode'] === 'image' ? 'selected' : '' %>>Image</option>
-                <option value="video" <%= all['panel.bg_mode'] === 'video' ? 'selected' : '' %>>Video</option>
-                <option value="gradient" <%= all['panel.bg_mode'] === 'gradient' ? 'selected' : '' %>>Gradient</option>
+                <option value="color" <%= all['panel.bg_mode'] === 'color' ? 'selected' : '' %>>Solid Color</option>
+                <option value="image" <%= all['panel.bg_mode'] === 'image' ? 'selected' : '' %>>4K Image / Wallpaper</option>
+                <option value="video" <%= all['panel.bg_mode'] === 'video' ? 'selected' : '' %>>Looping Video Background</option>
+                <option value="gradient" <%= all['panel.bg_mode'] === 'gradient' ? 'selected' : '' %>>Cosmic Gradient</option>
               </select>
             </div>
-            <div class="form-group">
-              <label>Background Color</label>
-              <div class="flex"><input type="color" name="panel.bg_color" value="<%= all['panel.bg_color'] || '#0b1020' %>" style="width:64px;height:38px;padding:2px"/><span class="muted mono" id="bgColorText"><%= all['panel.bg_color'] || '#0b1020' %></span></div>
+
+            <!-- Glassmorphism Blur Slider -->
+            <div class="form-group mb-3">
+              <div class="flex-between mb-1">
+                <label style="font-weight:700">Backdrop Blur Strength (Glassmorphism)</label>
+                <span id="admBlurBadge" class="pill pill-blue mono font-bold"><%= all['panel.bg_blur'] || '16' %>px</span>
+              </div>
+              <input type="range" name="panel.bg_blur" min="0" max="40" step="1" value="<%= all['panel.bg_blur'] || '16' %>" oninput="document.getElementById('admBlurBadge').textContent=this.value+'px';updateLiveBlur(this.value)"/>
+              <div class="form-hint">Adjust CSS backdrop-filter blur across all UI cards (0px - 40px)</div>
             </div>
+
+            <!-- Transparency Slider -->
+            <div class="form-group mb-3">
+              <div class="flex-between mb-1">
+                <label style="font-weight:700">UI Card Transparency</label>
+                <span id="admTransBadge" class="pill pill-green mono font-bold"><%= all['panel.bg_transparency'] || '65' %>%</span>
+              </div>
+              <input type="range" name="panel.bg_transparency" min="10" max="100" step="1" value="<%= all['panel.bg_transparency'] || '65' %>" oninput="document.getElementById('admTransBadge').textContent=this.value+'%';updateLiveTransparency(this.value)"/>
+              <div class="form-hint">Adjust card background opacity level (10% clear - 100% solid)</div>
+            </div>
+
+            <div class="form-group">
+              <label>Background Color (Fallback)</label>
+              <div class="flex"><input type="color" name="panel.bg_color" value="<%= all['panel.bg_color'] || '#090d19' %>" style="width:64px;height:38px;padding:2px"/><span class="muted mono" id="bgColorText"><%= all['panel.bg_color'] || '#090d19' %></span></div>
+            </div>
+
             <div class="form-group">
               <label>Background Image URL</label>
-              <input name="panel.bg_url" value="<%= all['panel.bg_url'] || '' %>" placeholder="https://... (also from 4kwallpapers tab)"/>
+              <input name="panel.bg_url" value="<%= all['panel.bg_url'] || '' %>" placeholder="https://..."/>
             </div>
+
             <div class="form-group">
-              <label>Upload Background (image or video)</label>
-              <label class="btn btn-sm">Choose file
+              <label>Background Video URL (.mp4 / .webm)</label>
+              <input name="panel.bg_video_url" value="<%= all['panel.bg_video_url'] || '' %>" placeholder="https://...mp4"/>
+            </div>
+
+            <div class="form-group">
+              <label>Upload Background File (Image or Video)</label>
+              <label class="btn btn-sm">Choose File
                 <input type="file" id="bgFile" accept="image/*,video/*" style="display:none" onchange="uploadMedia('background', this)"/>
               </label>
               <% if (all['panel.bg_file'] || all['panel.bg_video_file']) { %><button type="button" class="btn btn-sm btn-danger" onclick="clearMedia('background')">Remove upload</button><% } %>
             </div>
-            <div class="form-group">
-              <label>Background Video URL</label>
-              <input name="panel.bg_video_url" value="<%= all['panel.bg_video_url'] || '' %>" placeholder="https://...mp4"/>
-            </div>
+
             <div class="form-row">
               <div class="form-group">
-                <label>Overlay Darkness</label>
-                <input type="range" name="panel.bg_overlay" min="0" max="0.9" step="0.05" value="<%= all['panel.bg_overlay'] || '0.55' %>" oninput="document.getElementById('overlayVal').textContent=this.value"/>
+                <label>Dark Overlay Darkness</label>
+                <input type="range" name="panel.bg_overlay" min="0" max="0.9" step="0.05" value="<%= all['panel.bg_overlay'] || '0.55' %>" oninput="document.getElementById('overlayVal').textContent=this.value;updateLiveOverlay(this.value)"/>
                 <div class="form-hint">Value: <span id="overlayVal"><%= all['panel.bg_overlay'] || '0.55' %></span></div>
               </div>
               <div class="form-group">
-                <label>Cover</label>
+                <label>Background Fit</label>
                 <select name="panel.bg_cover">
-                  <option value="1" <%= all['panel.bg_cover'] === '1' ? 'selected' : '' %>>Cover (fill screen)</option>
+                  <option value="1" <%= all['panel.bg_cover'] === '1' ? 'selected' : '' %>>Cover (Fill Screen)</option>
                   <option value="0" <%= all['panel.bg_cover'] === '0' ? 'selected' : '' %>>Contain</option>
                 </select>
               </div>
             </div>
           </div>
+
           <div>
-            <label>Live Preview</label>
-            <div class="preview-box" style="min-height:220px;overflow:hidden;background:<%= all['panel.bg_color'] || '#0b1020' %>">
+            <label style="font-weight:700">Live Preview &amp; Studio</label>
+            <div class="preview-box" style="min-height:260px;overflow:hidden;background:<%= all['panel.bg_color'] || '#090d19' %>;border-radius:14px;border:1px solid var(--border)">
               <% const bgP = all['panel.bg_mode'] === 'image' ? (all['panel.bg_file'] || all['panel.bg_url']) : all['panel.bg_mode'] === 'video' ? (all['panel.bg_video_file'] || all['panel.bg_video_url']) : ''; %>
-              <% if (all['panel.bg_mode'] === 'video' && bgP) { %><video src="<%= bgP %>" autoplay muted loop style="width:100%;height:100%;object-fit:cover;border-radius:8px"></video><% } else if (all['panel.bg_mode'] === 'image' && bgP) { %><img src="<%= bgP %>" style="width:100%;height:100%;object-fit:cover;border-radius:8px"/><% } else if (all['panel.bg_mode'] === 'gradient') { %><div style="width:100%;height:100%;border-radius:8px;background:linear-gradient(135deg,<%= all['panel.accent'] || '#6366f1' %>,#22d3ee,#0b1020)"></div><% } else { %><span class="muted">Color background: <%= all['panel.bg_color'] || '#0b1020' %></span><% } %>
+              <% if (all['panel.bg_mode'] === 'video' && bgP) { %><video src="<%= bgP %>" autoplay muted loop style="width:100%;height:100%;object-fit:cover;border-radius:8px"></video><% } else if (all['panel.bg_mode'] === 'image' && bgP) { %><img src="<%= bgP %>" style="width:100%;height:100%;object-fit:cover;border-radius:8px"/><% } else if (all['panel.bg_mode'] === 'gradient') { %><div style="width:100%;height:100%;border-radius:8px;background:radial-gradient(1200px 800px at 20% 10%, rgba(99,102,241,0.3), transparent 60%), radial-gradient(1000px 700px at 85% 90%, rgba(56,189,248,0.2), transparent 55%), #090d19"></div><% } else { %><span class="muted">Solid Color: <%= all['panel.bg_color'] || '#090d19' %></span><% } %>
+            </div>
+
+            <div class="mt-3">
+              <button type="button" class="btn btn-primary btn-block" onclick="openCustomizationModal()">
+                🚀 Launch Interactive 4K Wallpaper Studio
+              </button>
             </div>
           </div>
         </div>
-        <button class="btn btn-primary mt-3" type="submit">Save Appearance</button>
+
+        <button class="btn btn-primary mt-3" type="submit">Save Appearance Settings</button>
       </form>
     </div>
   </div>
 
-  <!-- ============ WALLPAPERS ============ -->
+  <!-- ============ 4K WALLPAPERS ============ -->
   <div class="tab-pane" id="tab-wallpapers" style="display:none">
     <div class="card">
-      <div class="card-title">4K Wallpapers (4kwallpapers.com)</div>
-      <div class="form-group">
-        <label>API Key</label>
-        <input id="wpKey" value="<%= all['panel.wallpapers_api_key'] || '' %>" placeholder="Get a key from 4kwallpapers.com"/>
-        <div class="form-hint">Uses https://api.4kwallpapers.com/v1/wallpaper/random to browse wallpapers</div>
+      <div class="flex-between mb-3">
+        <div>
+          <div class="card-title" style="margin:0">4K Wallpapers Library (4kwallpapers.com)</div>
+          <div class="muted text-sm mt-1">Directly browse, preview, search, and apply 4K wallpapers to your web panel</div>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" onclick="openCustomizationModal()">
+          Open Fullscreen Studio
+        </button>
       </div>
-      <div class="flex">
-        <button class="btn btn-primary" onclick="saveWpKey()">Save Key</button>
-        <button class="btn" onclick="loadWallpapers()">Browse Wallpapers</button>
+
+      <div class="flex mb-3" style="gap:8px">
+        <input id="adminWpSearch" placeholder="Search 4K wallpapers..." onkeydown="if(event.key==='Enter') loadAdminWallpapers()" style="max-width:320px;padding:8px 12px;font-size:13px"/>
+        <button class="btn btn-primary btn-sm" onclick="loadAdminWallpapers()">Search / Refresh</button>
       </div>
-      <div id="wpGrid" class="wall-grid mt-3" style="display:none"></div>
+
+      <div id="wpGrid" class="grid" style="grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));gap:14px"></div>
       <div id="wpMsg" class="muted mt-2"></div>
     </div>
   </div>
@@ -400,36 +445,41 @@ async function saveWpKey() {
     VP.toast('Key saved', 'success');
   } catch (e) { VP.toast(e.message, 'error'); }
 }
-async function loadWallpapers() {
+async function loadAdminWallpapers() {
   const grid = document.getElementById('wpGrid');
   const msg = document.getElementById('wpMsg');
+  const q = document.getElementById('adminWpSearch').value.trim();
   grid.style.display = 'grid';
-  msg.textContent = 'Loading wallpapers...';
+  msg.textContent = 'Loading wallpapers from 4kwallpapers.com...';
   try {
-    const d = await VP.api('/admin/wallpapers');
-    msg.textContent = d.wallpapers.length + ' wallpapers loaded. Click one to set as background.';
+    const d = await VP.api('/admin/wallpapers' + (q ? '?q=' + encodeURIComponent(q) : ''));
+    if (!d.ok || !d.wallpapers || !d.wallpapers.length) {
+      msg.textContent = 'No wallpapers found.';
+      grid.innerHTML = '';
+      return;
+    }
+    msg.textContent = d.wallpapers.length + ' wallpapers ready. Click to apply directly.';
     grid.innerHTML = '';
     for (const w of d.wallpapers) {
-      const url = w.thumb || w.thumbnail || w.url || w.preview || (w.image && w.image.url) || '';
-      const full = w.url || (w.image && w.image.url) || w.download || url;
-      if (!full) continue;
-      const card = VP.el('div', { class: 'wall-card' });
-      const img = VP.el('img', { src: url, loading: 'lazy', onerror: () => card.remove() });
-      const ov = VP.el('div', { class: 'wall-btn' });
-      const btn = VP.el('button', { class: 'btn btn-sm btn-primary' }, 'Set as background');
-      btn.onclick = async (e) => {
-        e.stopPropagation();
-        try {
-          await VP.api('/admin/wallpapers/apply', { method: 'POST', body: { url: full, thumbnail: url } });
-          VP.toast('Background applied!', 'success');
-          setTimeout(() => location.reload(), 700);
-        } catch (err) { VP.toast(err.message, 'error'); }
-      };
-      ov.appendChild(btn);
-      card.append(img, ov);
+      const url = w.thumb || w.preview;
+      const full = w.full || w.preview;
+      const card = document.createElement('div');
+      card.className = 'wall-card-modern';
+      card.innerHTML = `
+        <img src="${url}" alt="${w.title}" loading="lazy"/>
+        <div class="wall-overlay-actions">
+          <span class="pill pill-blue" style="font-size:10px;padding:2px 6px">4K UHD</span>
+          <div>
+            <div class="wall-title-badge mb-1">${w.title}</div>
+            <div class="flex" style="gap:6px">
+              <button class="btn btn-primary btn-sm" style="flex:1;padding:4px 8px;font-size:11.5px" onclick="applyWallpaper('${full}', '${url}')">Apply</button>
+              <button class="btn btn-sm" style="padding:4px 8px;font-size:11.5px" onclick="previewWallpaper('${full}')">Preview</button>
+            </div>
+          </div>
+        </div>
+      `;
       grid.appendChild(card);
     }
-    if (!grid.children.length) msg.textContent = 'No wallpapers returned. Check your API key.';
   } catch (e) { msg.textContent = 'Failed: ' + e.message; }
 }
 </script>

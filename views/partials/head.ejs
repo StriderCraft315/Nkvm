@@ -21,11 +21,12 @@ const navbarStyle = settings['panel.navbar_style'] || 'glass';
 <link rel="icon" href="<%= favicon %>"/>
 <link rel="stylesheet" href="/css/panel.css"/>
 <% if (typeof styles !== 'undefined') { for (const s of styles) { %><link rel="stylesheet" href="<%= s %>"/><% } } %>
+<% if (typeof scripts !== 'undefined') { for (const s of scripts) { %><script src="<%= s %>"></script><% } } %>
 <style>:root { --accent: <%= accent %>; }</style>
 <script>
 window.VP_CONFIG = { apiPort: 3002 };
 function vpApiBase() {
-  return location.protocol + '//' + location.hostname + ':' + window.VP_CONFIG.apiPort;
+  return '';
 }
 function vpToken() {
   const m = document.cookie.match(/(?:^|;\s*)token=([^;]+)/);

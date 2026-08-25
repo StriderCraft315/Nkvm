@@ -141,6 +141,9 @@ router.post('/vms/:id/restart', loadVm, async (req, res) => {
 router.get('/vms/:id/status', loadVm, (req, res) => {
   res.json({ id: req.vm.id, status: req.vm.status, uptime: vmService.uptimeSeconds(req.vm), mem: vmService.memUsage(req.vm) });
 });
+router.get('/vms/:id/bootlog', loadVm, (req, res) => {
+  res.json({ ok: true, log: vmService.getBootLog(req.vm) });
+});
 router.delete('/vms/:id', loadVm, (req, res) => {
   try {
     if (req.vm.owner_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
@@ -296,6 +299,59 @@ router.get('/admin/stats', apiAdmin, (req, res) => {
     backups: db.prepare('SELECT COUNT(*) c FROM backups').get().c,
     disk_usage: vmService.totalDiskUsage(),
   });
+});
+
+// ---------- Wallpapers & Customization API ----------
+const wallpaperService = require('../services/wallpaperService');
+
+router.get('/wallpapers', async (req, res) => {
+  try {
+    const data = await wallpaperService.getWallpapers({
+      category: req.query.category,
+      page: req.query.page,
+      query: req.query.q || req.query.query,
+    });
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+router.post('/wallpapers/apply', json, (req, res) => {
+  try {
+    const { url, mode = 'image', overlay, blur, transparency } = req.body || {};
+    if (url) {
+      if (mode === 'video') {
+        settings.set('panel.bg_mode', 'video');
+        settings.set('panel.bg_video_url', url);
+      } else {
+        settings.set('panel.bg_mode', 'image');
+        settings.set('panel.bg_url', url);
+      }
+    }
+    if (overlay !== undefined) settings.set('panel.bg_overlay', String(overlay));
+    if (blur !== undefined) settings.set('panel.bg_blur', String(blur));
+    if (transparency !== undefined) settings.set('panel.bg_transparency', String(transparency));
+    res.json({ ok: true, message: 'Background applied successfully', settings: settings.all() });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+router.post('/customization/save', json, (req, res) => {
+  try {
+    const fields = [
+      'panel.bg_mode', 'panel.bg_color', 'panel.bg_url', 'panel.bg_video_url',
+      'panel.bg_overlay', 'panel.bg_cover', 'panel.bg_blur', 'panel.bg_transparency',
+      'panel.theme', 'panel.accent'
+    ];
+    for (const k of fields) {
+      if (req.body[k] !== undefined) settings.set(k, String(req.body[k]));
+    }
+    res.json({ ok: true, message: 'Customization saved', settings: settings.all() });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 module.exports = router;

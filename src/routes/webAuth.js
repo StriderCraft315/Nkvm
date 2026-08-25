@@ -35,7 +35,7 @@ router.post('/login', express.urlencoded({ extended: true }), (req, res) => {
     if (!check.ok) return render(res, 'login', { tfa: true, tfaUser: user.username, error: check.error });
   }
   const { token } = authService.finishLogin(user, ip);
-  res.cookie('token', token, { httpOnly: true, sameSite: 'lax', maxAge: 7 * 24 * 3600 * 1000 });
+  res.cookie('token', token, { httpOnly: false, sameSite: 'lax', maxAge: 7 * 24 * 3600 * 1000 });
   res.redirect('/dashboard');
 });
 

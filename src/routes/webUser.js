@@ -62,6 +62,10 @@ router.get('/servers/:id/console', loadVm, (req, res) => {
   render(res, 'server/console', { vm: req.vm });
 });
 
+router.get('/servers/:id/bootlog', loadVm, (req, res) => {
+  res.json({ ok: true, log: vmService.getBootLog(req.vm) });
+});
+
 router.get('/servers/:id/files', loadVm, (req, res) => {
   render(res, 'server/files', { vm: req.vm });
 });
@@ -87,7 +91,7 @@ router.get('/servers/:id/subusers', loadVm, (req, res) => {
   const subs = db.prepare(
     'SELECT s.*, u.username, u.email FROM subusers s JOIN users u ON u.id = s.user_id WHERE s.vm_id = ? ORDER BY s.id DESC'
   ).all(req.vm.id);
-  const allUsers = db.prepare('SELECT id, username, email FROM users WHERE role = ? ORDER BY username').all('user');
+  const allUsers = db.prepare('SELECT id, username, email FROM users WHERE id != ? ORDER BY username').all(req.vm.owner_id || 0);
   render(res, 'server/subusers', { vm: req.vm, subs, allUsers });
 });
 

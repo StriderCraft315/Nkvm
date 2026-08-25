@@ -1,0 +1,16 @@
+{
+  "name": "vpanel-vm",
+  "forwardPorts": [3001, 3002],
+  "portsAttributes": {
+    "3001": {
+      "label": "vpanel Web Panel",
+      "onAutoForward": "silent",
+      "visibility": "public"
+    },
+    "3002": {
+      "label": "vpanel REST API",
+      "onAutoForward": "silent",
+      "visibility": "public"
+    }
+  }
+}

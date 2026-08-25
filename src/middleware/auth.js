@@ -6,6 +6,9 @@ function getUserFromReq(req) {
   if (!token && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
     token = req.headers.authorization.slice(7);
   }
+  if (!token && req.query && req.query.token) {
+    token = req.query.token;
+  }
   if (!token) return null;
   const payload = authService.verifyToken(token);
   if (!payload) return null;

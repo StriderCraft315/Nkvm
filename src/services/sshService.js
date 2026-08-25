@@ -70,33 +70,62 @@ function shellStream(vm) {
 }
 
 function statLineToFile(line, base) {
-  const m = line.match(/^(\S+)\s+(\S+)\s+(\d+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+([\s\S]+)$/);
-  if (!m) return null;
-  const [, perms, links, size, owner, group, mon, day, time, name] = m;
-  const full = name.replace(/^"|"$/g, '');
+  const trimmed = String(line || '').trim();
+  if (!trimmed || trimmed.startsWith('total ')) return null;
+  const parts = trimmed.split(/\s+/);
+  if (parts.length < 8) return null;
+
+  const perms = parts[0];
+  if (!/^[-dclbsp][rwxstST-]{9}/.test(perms)) return null;
+
   const isDir = perms.startsWith('d');
   const isLink = perms.startsWith('l');
+
+  const owner = parts[2] || 'root';
+  const group = parts[3] || 'root';
+  const size = isDir ? 0 : (parseInt(parts[4], 10) || 0);
+
+  let date = '';
+  let name = '';
+
+  if (parts.length >= 9 && !parts[5].includes('-') && !parts[5].includes(':')) {
+    // Traditional format: Mon Day Time/Year Name (e.g. Aug 25 04:30 my_file.txt)
+    date = `${parts[5]} ${parts[6]} ${parts[7]}`;
+    name = parts.slice(8).join(' ');
+  } else {
+    // ISO format: YYYY-MM-DD HH:MM Name (e.g. 2026-08-25 04:30 my_file.txt)
+    date = `${parts[5]} ${parts[6]}`;
+    name = parts.slice(7).join(' ');
+  }
+
+  name = name.replace(/^"|"$/g, '').trim();
+  if (!name || name === '.' || name === '..') return null;
+
+  if (isLink && name.includes(' -> ')) {
+    name = name.split(' -> ')[0].trim();
+  }
+
   return {
-    name: full,
-    path: path.posix.join(base, full),
+    name,
+    path: path.posix.join(base || '/', name),
     type: isDir ? 'dir' : isLink ? 'link' : 'file',
-    size: parseInt(size, 10) || 0,
+    size,
     perms,
     owner,
     group,
-    date: `${mon} ${day} ${time}`,
+    date: date || '-',
   };
 }
 
-async function listDir(vm, p = '.') {
+async function listDir(vm, p = '/') {
   const target = p && p !== '/' ? p : '/';
   const r = await withExec(vm, `ls -la --time-style=long-iso "${target}" 2>/dev/null || ls -la "${target}"`);
   if (r.code !== 0) throw new Error(r.stderr || 'Failed to list directory');
   const lines = r.stdout.split('\n').filter((l) => l && !l.startsWith('total '));
   const files = [];
   for (const line of lines) {
-    const f = statLineToFile(line, target === '/' ? '' : target);
-    if (f && f.name !== '.' && f.name !== '..') files.push(f);
+    const f = statLineToFile(line, target);
+    if (f) files.push(f);
   }
   files.sort((a, b) => (a.type === 'dir' ? -1 : 1) - (b.type === 'dir' ? -1 : 1) || a.name.localeCompare(b.name));
   return files;

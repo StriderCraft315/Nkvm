@@ -1,0 +1,600 @@
+<!-- Customization & Appearance Suite Modal -->
+<div id="customizationModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:999;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:20px;overflow-y:auto">
+  <div class="card modal-card" style="max-width:1080px;margin:30px auto;padding:26px;border:1px solid var(--accent);box-shadow:0 24px 80px rgba(0,0,0,0.7);background:var(--bg-card);border-radius:18px">
+    
+    <!-- Modal Header -->
+    <div class="flex-between mb-3" style="border-bottom:1px solid var(--border);padding-bottom:16px">
+      <div class="flex" style="gap:12px">
+        <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg, var(--accent), var(--accent-2));display:grid;place-items:center;color:#fff;box-shadow:0 0 16px var(--accent-glow)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 10 10 0 0 0 9.54-13.88A10 10 0 0 0 12 2z"/></svg>
+        </div>
+        <div>
+          <h2 style="font-size:20px;font-weight:800;letter-spacing:-0.3px;color:#fff">Appearance &amp; Customization Studio</h2>
+          <div class="muted text-sm">Customize background, glassmorphism blur, transparency, and browse 4K wallpapers</div>
+        </div>
+      </div>
+      <div class="flex" style="gap:8px">
+        <button class="btn btn-sm" onclick="resetCustomizationDefaults()" title="Reset to Defaults">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+          Reset Defaults
+        </button>
+        <button class="icon-btn" style="width:32px;height:32px" onclick="closeCustomizationModal()">✕</button>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="tabs mb-3" style="gap:8px">
+      <button type="button" class="tab active" id="tabBtnWallpapers" onclick="switchCustomTab('wallpapers')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15" style="vertical-align:-2px;margin-right:4px"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        4K Wallpapers (4kwallpapers.com)
+      </button>
+      <button type="button" class="tab" id="tabBtnControls" onclick="switchCustomTab('controls')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15" style="vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Blur &amp; Transparency Sliders
+      </button>
+      <button type="button" class="tab" id="tabBtnUpload" onclick="switchCustomTab('upload')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15" style="vertical-align:-2px;margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+        Upload Image / Video / URL
+      </button>
+      <button type="button" class="tab" id="tabBtnFavorites" onclick="switchCustomTab('favorites')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15" style="vertical-align:-2px;margin-right:4px"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        Saved Favorites (<span id="favCount">0</span>)
+      </button>
+    </div>
+
+    <!-- TAB 1: 4K WALLPAPERS BROWSER -->
+    <div id="paneWallpapers" class="custom-pane">
+      <!-- Search & Filters Toolbar -->
+      <div class="flex-between mb-3" style="gap:12px;flex-wrap:wrap">
+        <div class="flex" style="gap:8px;flex:1;max-width:400px">
+          <input type="search" id="wpSearchInput" placeholder="Search 4K wallpapers (e.g. space, anime, cyberpunk)..." onkeydown="if(event.key==='Enter') searchWp()" style="padding:8px 14px;font-size:13px"/>
+          <button class="btn btn-primary btn-sm" onclick="searchWp()">Search</button>
+        </div>
+        
+        <!-- Category Filter Pills -->
+        <div class="flex flex-wrap" style="gap:6px" id="categoryChips">
+          <button type="button" class="btn btn-sm os-filter-btn active" onclick="setWpCategory('all', this)">All</button>
+          <button type="button" class="btn btn-sm os-filter-btn" onclick="setWpCategory('anime', this)">Anime</button>
+          <button type="button" class="btn btn-sm os-filter-btn" onclick="setWpCategory('dark', this)">Dark / AMOLED</button>
+          <button type="button" class="btn btn-sm os-filter-btn" onclick="setWpCategory('space', this)">Space</button>
+          <button type="button" class="btn btn-sm os-filter-btn" onclick="setWpCategory('nature', this)">Nature</button>
+          <button type="button" class="btn btn-sm os-filter-btn" onclick="setWpCategory('cars', this)">Cars</button>
+          <button type="button" class="btn btn-sm os-filter-btn" onclick="setWpCategory('games', this)">Gaming</button>
+          <button type="button" class="btn btn-sm os-filter-btn" onclick="setWpCategory('abstract', this)">Abstract</button>
+          <button type="button" class="btn btn-sm os-filter-btn" onclick="setWpCategory('minimalism', this)">Minimal</button>
+          <button type="button" class="btn btn-sm os-filter-btn" onclick="setWpCategory('technology', this)">Tech/AI</button>
+          <button type="button" class="btn btn-sm os-filter-btn" onclick="setWpCategory('city', this)">City</button>
+        </div>
+      </div>
+
+      <!-- Wallpaper Cards Grid -->
+      <div id="wpGalleryGrid" class="grid" style="grid-template-columns:repeat(auto-fill, minmax(230px, 1fr));gap:14px;min-height:360px">
+        <div class="empty" style="grid-column:1/-1"><svg class="spin" viewBox="0 0 24 24"></svg><p class="mt-2">Loading 4K wallpapers...</p></div>
+      </div>
+
+      <!-- Pagination Footer -->
+      <div class="flex-between mt-3" style="border-top:1px solid var(--border);padding-top:14px">
+        <button class="btn btn-sm" id="btnPrevWp" onclick="changeWpPage(-1)" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M15 18l-6-6 6-6"/></svg>
+          Previous Page
+        </button>
+        <span class="muted text-sm mono font-bold" id="wpPageIndicator">Page 1</span>
+        <button class="btn btn-sm" id="btnNextWp" onclick="changeWpPage(1)">
+          Next Page
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- TAB 2: BLUR & TRANSPARENCY CONTROLS -->
+    <div id="paneControls" class="custom-pane" style="display:none">
+      <div class="grid grid-2" style="gap:24px">
+        <div>
+          <!-- Blur Slider -->
+          <div class="card mb-3" style="padding:18px;background:rgba(0,0,0,0.25)">
+            <div class="flex-between mb-2">
+              <label style="font-weight:700;font-size:14px;color:#fff;margin:0">Glassmorphism Blur Control</label>
+              <span id="blurValBadge" class="pill pill-blue mono font-bold">16px</span>
+            </div>
+            <div class="muted text-sm mb-3">Adjust the glassmorphism backdrop blur strength (0px - 40px)</div>
+            <input type="range" id="sliderBlur" min="0" max="40" step="1" value="16" oninput="updateLiveBlur(this.value)"/>
+            <div class="flex-between mt-2 muted text-sm mono" style="font-size:11px">
+              <span>0px (No Blur)</span>
+              <span>16px (Default)</span>
+              <span>40px (Ultra Blur)</span>
+            </div>
+          </div>
+
+          <!-- Transparency Slider -->
+          <div class="card mb-3" style="padding:18px;background:rgba(0,0,0,0.25)">
+            <div class="flex-between mb-2">
+              <label style="font-weight:700;font-size:14px;color:#fff;margin:0">Panel Transparency Control</label>
+              <span id="transparencyValBadge" class="pill pill-green mono font-bold">65%</span>
+            </div>
+            <div class="muted text-sm mb-3">Adjust UI card &amp; sidebar background opacity (0% - 100%)</div>
+            <input type="range" id="sliderTransparency" min="10" max="100" step="1" value="65" oninput="updateLiveTransparency(this.value)"/>
+            <div class="flex-between mt-2 muted text-sm mono" style="font-size:11px">
+              <span>10% (Ultra Clear)</span>
+              <span>65% (Balanced)</span>
+              <span>100% (Solid)</span>
+            </div>
+          </div>
+
+          <!-- Dark Overlay Darkness -->
+          <div class="card" style="padding:18px;background:rgba(0,0,0,0.25)">
+            <div class="flex-between mb-2">
+              <label style="font-weight:700;font-size:14px;color:#fff;margin:0">Background Dark Overlay</label>
+              <span id="overlayValBadge" class="pill pill-yellow mono font-bold">55%</span>
+            </div>
+            <div class="muted text-sm mb-3">Darken image or video background for maximum text contrast</div>
+            <input type="range" id="sliderOverlay" min="0" max="0.9" step="0.05" value="0.55" oninput="updateLiveOverlay(this.value)"/>
+            <div class="flex-between mt-2 muted text-sm mono" style="font-size:11px">
+              <span>0% (Raw Image)</span>
+              <span>55% (Standard)</span>
+              <span>90% (Deep Dark)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Preview Inspector Box -->
+        <div>
+          <div class="card" style="padding:18px;background:rgba(0,0,0,0.3);position:sticky;top:10px">
+            <div class="card-title" style="margin-bottom:12px">Live Glassmorphism Inspector</div>
+            <div id="inspectorCard" class="card" style="padding:18px;border:1px solid var(--accent);background:var(--bg-card);box-shadow:0 8px 24px rgba(0,0,0,0.4)">
+              <div class="flex-between mb-2">
+                <span class="font-bold">vPanel Pro Instance</span>
+                <span class="pill pill-green">Online</span>
+              </div>
+              <p class="muted text-sm mb-3">Notice how this card dynamically blurs and reflects the underlying background in real-time as you move the sliders above.</p>
+              <div class="flex" style="gap:8px">
+                <button class="btn btn-primary btn-sm">Sample Action</button>
+                <button class="btn btn-sm">Details</button>
+              </div>
+            </div>
+
+            <div class="mt-3">
+              <button class="btn btn-primary btn-block" onclick="saveCustomizationSettings()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                Save Customization Preferences
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: UPLOAD MEDIA & CUSTOM URL -->
+    <div id="paneUpload" class="custom-pane" style="display:none">
+      <div class="grid grid-2" style="gap:20px">
+        
+        <!-- Upload Local Image -->
+        <div class="card" style="padding:20px;background:rgba(0,0,0,0.25)">
+          <div class="card-title">Upload Local Image Background</div>
+          <div style="border:2px dashed var(--border);border-radius:14px;padding:24px;text-align:center">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40" style="opacity:0.6;margin-bottom:8px"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <div style="font-weight:600;margin-bottom:4px">Select Image File (.jpg, .png, .webp)</div>
+            <div class="muted text-sm mb-3">Instant preview &amp; upload</div>
+            <label class="btn btn-primary btn-sm" style="cursor:pointer">
+              <span>Choose Image</span>
+              <input type="file" id="customImgUpload" accept="image/*" style="display:none" onchange="handleLocalImageUpload(this)"/>
+            </label>
+          </div>
+        </div>
+
+        <!-- Upload Local Video -->
+        <div class="card" style="padding:20px;background:rgba(0,0,0,0.25)">
+          <div class="card-title">Upload Local Video Background</div>
+          <div style="border:2px dashed var(--border);border-radius:14px;padding:24px;text-align:center">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40" style="opacity:0.6;margin-bottom:8px"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+            <div style="font-weight:600;margin-bottom:4px">Select Video File (.mp4, .webm)</div>
+            <div class="muted text-sm mb-3">Live looping video background</div>
+            <label class="btn btn-primary btn-sm" style="cursor:pointer">
+              <span>Choose Video</span>
+              <input type="file" id="customVidUpload" accept="video/mp4,video/webm" style="display:none" onchange="handleLocalVideoUpload(this)"/>
+            </label>
+          </div>
+        </div>
+
+        <!-- Direct URL Input -->
+        <div class="card" style="grid-column:1/-1;padding:20px;background:rgba(0,0,0,0.25)">
+          <div class="card-title">Set Background via Direct URL</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Image or Video URL</label>
+              <input id="directBgUrl" placeholder="https://example.com/wallpaper.jpg or https://example.com/video.mp4"/>
+            </div>
+            <div class="form-group">
+              <label>Media Type</label>
+              <select id="directBgType">
+                <option value="image">Image Background</option>
+                <option value="video">Video Background (MP4/WebM)</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex right" style="gap:8px">
+            <button class="btn" onclick="previewDirectUrl()">Preview</button>
+            <button class="btn btn-primary" onclick="applyDirectUrl()">Apply &amp; Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: SAVED FAVORITES -->
+    <div id="paneFavorites" class="custom-pane" style="display:none">
+      <div id="favGalleryGrid" class="grid" style="grid-template-columns:repeat(auto-fill, minmax(230px, 1fr));gap:14px;min-height:300px">
+        <div class="empty" style="grid-column:1/-1"><p class="muted">No favorite wallpapers saved yet. Click the star on any wallpaper to add it here!</p></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<style>
+.wall-card-modern {
+  position: relative; border-radius: 13px; overflow: hidden;
+  border: 1px solid var(--border); background: var(--bg-card);
+  aspect-ratio: 16/10; transition: all 0.2s ease; cursor: pointer;
+}
+.wall-card-modern:hover {
+  transform: translateY(-3px); border-color: var(--accent);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+}
+.wall-card-modern img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease; }
+.wall-card-modern:hover img { transform: scale(1.05); }
+
+.wall-overlay-actions {
+  position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 50%, transparent 100%);
+  display: flex; flex-direction: column; justify-content: space-between; padding: 10px;
+  opacity: 0; transition: opacity 0.2s ease;
+}
+.wall-card-modern:hover .wall-overlay-actions { opacity: 1; }
+
+.wall-title-badge {
+  font-size: 11.5px; font-weight: 700; color: #fff;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+}
+</style>
+
+<script>
+let currentWpCategory = 'all';
+let currentWpPage = 1;
+let currentWpQuery = '';
+let currentFavorites = JSON.parse(localStorage.getItem('vp_fav_wallpapers') || '[]');
+
+function openCustomizationModal() {
+  document.getElementById('customizationModal').style.display = 'block';
+  updateFavCountBadge();
+  if (!window._wpLoaded) {
+    load4kWallpapers();
+    window._wpLoaded = true;
+  }
+}
+
+function closeCustomizationModal() {
+  document.getElementById('customizationModal').style.display = 'none';
+}
+
+function switchCustomTab(tab) {
+  document.querySelectorAll('.modal-card .tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.custom-pane').forEach(p => p.style.display = 'none');
+
+  if (tab === 'wallpapers') {
+    document.getElementById('tabBtnWallpapers').classList.add('active');
+    document.getElementById('paneWallpapers').style.display = 'block';
+  } else if (tab === 'controls') {
+    document.getElementById('tabBtnControls').classList.add('active');
+    document.getElementById('paneControls').style.display = 'block';
+  } else if (tab === 'upload') {
+    document.getElementById('tabBtnUpload').classList.add('active');
+    document.getElementById('paneUpload').style.display = 'block';
+  } else if (tab === 'favorites') {
+    document.getElementById('tabBtnFavorites').classList.add('active');
+    document.getElementById('paneFavorites').style.display = 'block';
+    renderFavorites();
+  }
+}
+
+async function load4kWallpapers() {
+  const grid = document.getElementById('wpGalleryGrid');
+  grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="spin mb-2"></div><p class="muted">Fetching 4K wallpapers...</p></div>';
+
+  try {
+    const url = `/api/wallpapers?category=${encodeURIComponent(currentWpCategory)}&page=${currentWpPage}&q=${encodeURIComponent(currentWpQuery)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (!data.ok || !data.wallpapers || data.wallpapers.length === 0) {
+      grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><p class="muted">No wallpapers found for this query.</p></div>';
+      return;
+    }
+
+    grid.innerHTML = '';
+    data.wallpapers.forEach(w => {
+      const isFav = currentFavorites.some(f => f.id === w.id);
+      const card = document.createElement('div');
+      card.className = 'wall-card-modern';
+      card.innerHTML = `
+        <img src="${w.thumb || w.preview}" alt="${w.title}" loading="lazy"/>
+        <div class="wall-overlay-actions">
+          <div class="flex-between">
+            <span class="pill pill-blue" style="font-size:10px;padding:2px 6px">4K UHD</span>
+            <button class="icon-btn" style="width:28px;height:28px;background:rgba(0,0,0,0.6)" onclick="toggleFav(event, ${JSON.stringify(w).replace(/"/g, '&quot;')})">
+              ${isFav ? '⭐' : '☆'}
+            </button>
+          </div>
+          <div>
+            <div class="wall-title-badge mb-1">${w.title}</div>
+            <div class="flex" style="gap:6px">
+              <button class="btn btn-primary btn-sm" style="flex:1;padding:4px 8px;font-size:11.5px" onclick="applyWallpaper('${w.full || w.preview}', '${w.thumb}')">
+                Apply
+              </button>
+              <button class="btn btn-sm" style="padding:4px 8px;font-size:11.5px" onclick="previewWallpaper('${w.full || w.preview}')">
+                Preview
+              </button>
+              <a class="btn btn-sm" style="padding:4px 8px;font-size:11.5px" href="${w.full || w.preview}" target="_blank" title="View Full Res">
+                ⬇
+              </a>
+            </div>
+          </div>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+
+    document.getElementById('wpPageIndicator').textContent = `Page ${currentWpPage}`;
+    document.getElementById('btnPrevWp').disabled = currentWpPage <= 1;
+    document.getElementById('btnNextWp').disabled = !data.hasNext && data.wallpapers.length < 12;
+
+  } catch (err) {
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><p class="muted">Failed to load wallpapers: ${err.message}</p></div>`;
+  }
+}
+
+function setWpCategory(cat, btn) {
+  document.querySelectorAll('#categoryChips .os-filter-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  currentWpCategory = cat;
+  currentWpPage = 1;
+  currentWpQuery = '';
+  document.getElementById('wpSearchInput').value = '';
+  load4kWallpapers();
+}
+
+function searchWp() {
+  currentWpQuery = document.getElementById('wpSearchInput').value.trim();
+  currentWpPage = 1;
+  load4kWallpapers();
+}
+
+function changeWpPage(delta) {
+  currentWpPage = Math.max(1, currentWpPage + delta);
+  load4kWallpapers();
+}
+
+// Live Preview without saving
+function previewWallpaper(url) {
+  const bg = document.getElementById('bgLayer');
+  if (bg) {
+    bg.style.backgroundImage = `url('${url}')`;
+    bg.style.backgroundSize = 'cover';
+    bg.style.backgroundPosition = 'center';
+  }
+  const vid = document.getElementById('bgVideo');
+  if (vid) vid.style.display = 'none';
+  const overlay = document.getElementById('bgOverlay');
+  if (overlay) overlay.style.display = 'block';
+  VP.toast('Previewing wallpaper in background', 'info');
+}
+
+async function applyWallpaper(url, thumb) {
+  previewWallpaper(url);
+  try {
+    const res = await fetch('/api/wallpapers/apply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + vpToken() },
+      body: JSON.stringify({
+        url,
+        thumbnail: thumb,
+        blur: document.getElementById('sliderBlur').value,
+        transparency: document.getElementById('sliderTransparency').value,
+        overlay: document.getElementById('sliderOverlay').value
+      })
+    });
+    const d = await res.json();
+    if (!res.ok || !d.ok) throw new Error(d.error || 'Failed to apply');
+    VP.toast('Wallpaper applied & saved successfully!', 'success');
+  } catch (e) {
+    VP.toast(e.message, 'error');
+  }
+}
+
+// Live Sliders
+function updateLiveBlur(val) {
+  document.getElementById('blurValBadge').textContent = `${val}px`;
+  document.documentElement.style.setProperty('--panel-blur', `${val}px`);
+}
+
+function updateLiveTransparency(val) {
+  document.getElementById('transparencyValBadge').textContent = `${val}%`;
+  document.documentElement.style.setProperty('--panel-transparency', `${val}%`);
+  const opacityRatio = (parseFloat(val) / 100).toFixed(2);
+  document.documentElement.style.setProperty('--bg-card', `rgba(15, 23, 42, ${opacityRatio})`);
+  document.documentElement.style.setProperty('--glass', `rgba(255, 255, 255, ${(0.06 * opacityRatio).toFixed(3)})`);
+}
+
+function updateLiveOverlay(val) {
+  document.getElementById('overlayValBadge').textContent = `${Math.round(val * 100)}%`;
+  document.documentElement.style.setProperty('--bg-overlay-val', val);
+}
+
+async function saveCustomizationSettings() {
+  const blur = document.getElementById('sliderBlur').value;
+  const transparency = document.getElementById('sliderTransparency').value;
+  const overlay = document.getElementById('sliderOverlay').value;
+  try {
+    const res = await fetch('/api/customization/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + vpToken() },
+      body: JSON.stringify({
+        'panel.bg_blur': blur,
+        'panel.bg_transparency': transparency,
+        'panel.bg_overlay': overlay
+      })
+    });
+    const d = await res.json();
+    if (!res.ok || !d.ok) throw new Error(d.error || 'Failed to save');
+    VP.toast('Customization preferences saved!', 'success');
+  } catch (e) {
+    VP.toast(e.message, 'error');
+  }
+}
+
+function resetCustomizationDefaults() {
+  updateLiveBlur(16);
+  updateLiveTransparency(65);
+  updateLiveOverlay(0.55);
+  document.getElementById('sliderBlur').value = 16;
+  document.getElementById('sliderTransparency').value = 65;
+  document.getElementById('sliderOverlay').value = 0.55;
+  const bg = document.getElementById('bgLayer');
+  if (bg) {
+    bg.style.backgroundImage = 'none';
+    bg.style.backgroundColor = '#090d19';
+  }
+  saveCustomizationSettings();
+  VP.toast('Customization reset to default', 'info');
+}
+
+// Favorites Management
+function toggleFav(e, w) {
+  e.stopPropagation();
+  const idx = currentFavorites.findIndex(f => f.id === w.id);
+  if (idx >= 0) {
+    currentFavorites.splice(idx, 1);
+    VP.toast('Removed from favorites', 'info');
+  } else {
+    currentFavorites.push(w);
+    VP.toast('Added to favorites!', 'success');
+  }
+  localStorage.setItem('vp_fav_wallpapers', JSON.stringify(currentFavorites));
+  updateFavCountBadge();
+  load4kWallpapers();
+}
+
+function updateFavCountBadge() {
+  const el = document.getElementById('favCount');
+  if (el) el.textContent = currentFavorites.length;
+}
+
+function renderFavorites() {
+  const grid = document.getElementById('favGalleryGrid');
+  if (currentFavorites.length === 0) {
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><p class="muted">No favorites saved yet. Click the star on any wallpaper to add it!</p></div>';
+    return;
+  }
+  grid.innerHTML = '';
+  currentFavorites.forEach(w => {
+    const card = document.createElement('div');
+    card.className = 'wall-card-modern';
+    card.innerHTML = `
+      <img src="${w.thumb || w.preview}" alt="${w.title}"/>
+      <div class="wall-overlay-actions">
+        <div class="flex-between">
+          <span class="pill pill-blue">Favorite</span>
+          <button class="icon-btn" style="width:28px;height:28px;background:rgba(0,0,0,0.6)" onclick="toggleFav(event, ${JSON.stringify(w).replace(/"/g, '&quot;')})">⭐</button>
+        </div>
+        <div>
+          <div class="wall-title-badge mb-1">${w.title}</div>
+          <div class="flex" style="gap:6px">
+            <button class="btn btn-primary btn-sm" style="flex:1" onclick="applyWallpaper('${w.full || w.preview}', '${w.thumb}')">Apply</button>
+            <button class="btn btn-sm" onclick="previewWallpaper('${w.full || w.preview}')">Preview</button>
+          </div>
+        </div>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+// Local image/video upload handler
+async function handleLocalImageUpload(input) {
+  const f = input.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    previewWallpaper(e.target.result);
+  };
+  reader.readAsDataURL(f);
+
+  const fd = new FormData();
+  fd.append('file', f);
+  try {
+    VP.toast('Uploading image background...', 'info');
+    const res = await fetch('/admin/settings/upload?type=background', { method: 'POST', body: fd });
+    const d = await res.json();
+    if (!res.ok || !d.ok) throw new Error(d.error || 'Upload failed');
+    VP.toast('Background image uploaded & applied!', 'success');
+  } catch (e) {
+    VP.toast(e.message, 'error');
+  }
+}
+
+async function handleLocalVideoUpload(input) {
+  const f = input.files[0];
+  if (!f) return;
+  const fd = new FormData();
+  fd.append('file', f);
+  try {
+    VP.toast('Uploading video background...', 'info');
+    const res = await fetch('/admin/settings/upload?type=background', { method: 'POST', body: fd });
+    const d = await res.json();
+    if (!res.ok || !d.ok) throw new Error(d.error || 'Upload failed');
+    const vid = document.getElementById('bgVideo');
+    if (vid) {
+      vid.src = d.file;
+      vid.style.display = 'block';
+    }
+    VP.toast('Background video uploaded & applied!', 'success');
+  } catch (e) {
+    VP.toast(e.message, 'error');
+  }
+}
+
+function previewDirectUrl() {
+  const url = document.getElementById('directBgUrl').value.trim();
+  const type = document.getElementById('directBgType').value;
+  if (!url) return VP.toast('Please enter a valid URL', 'error');
+
+  if (type === 'video') {
+    const vid = document.getElementById('bgVideo');
+    if (vid) {
+      vid.src = url;
+      vid.style.display = 'block';
+    }
+    VP.toast('Previewing video background', 'info');
+  } else {
+    previewWallpaper(url);
+  }
+}
+
+async function applyDirectUrl() {
+  const url = document.getElementById('directBgUrl').value.trim();
+  const type = document.getElementById('directBgType').value;
+  if (!url) return VP.toast('Please enter a valid URL', 'error');
+
+  previewDirectUrl();
+  try {
+    const res = await fetch('/api/wallpapers/apply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + vpToken() },
+      body: JSON.stringify({ url, mode: type })
+    });
+    const d = await res.json();
+    if (!res.ok || !d.ok) throw new Error(d.error || 'Failed to save URL');
+    VP.toast('Background URL saved successfully!', 'success');
+  } catch (e) {
+    VP.toast(e.message, 'error');
+  }
+}
+</script>

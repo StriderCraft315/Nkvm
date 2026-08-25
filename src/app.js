@@ -41,6 +41,7 @@ function createWebApp() {
   app.use('/', require('./routes/webAuth'));
   app.use('/', require('./routes/webUser'));
   app.use('/', require('./routes/webAdmin'));
+  app.use('/api', require('./routes/api'));
 
   app.use((req, res) => {
     if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Not found' });
@@ -153,10 +154,25 @@ function bootstrap() {
   attachConsoleSocket(io);
   attachVncProxy(webServer);
 
-  webServer.listen(config.panelPort, () => {
+  // Auto-seed admin if none exists
+  try {
+    if (authService.countAdmins() === 0) {
+      const username = process.env.ADMIN_USERNAME || 'admin';
+      const email = process.env.ADMIN_EMAIL || 'admin@vpanel.local';
+      const password = process.env.ADMIN_PASSWORD || 'admin12345';
+      const user = authService.createUser({ username, email, password, name: 'Administrator', role: 'admin', verified: true });
+      const { db } = require('./lib/db');
+      db.prepare('UPDATE users SET root_admin = 1 WHERE id = ?').run(user.id);
+      logger.info(`[panel] auto-seeded initial admin: ${username} (${email})`);
+    }
+  } catch (e) {
+    logger.warn('[panel] auto-seed admin: ' + e.message);
+  }
+
+  webServer.listen(config.panelPort, '0.0.0.0', () => {
     logger.info(`[panel] vpanel web running on http://0.0.0.0:${config.panelPort}`);
   });
-  apiApp.listen(config.apiPort, () => {
+  apiApp.listen(config.apiPort, '0.0.0.0', () => {
     logger.info(`[panel] vpanel API running on http://0.0.0.0:${config.apiPort}/api`);
   });
 

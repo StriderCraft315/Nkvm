@@ -51,11 +51,14 @@ window.VP = (() => {
   }
 
   function fmtBytes(n) {
-    if (!n && n !== 0) return '-';
+    if (n === 0) return '0 B';
+    if (!n && n !== 0) return '—';
+    let num = typeof n === 'string' ? parseFloat(n) : n;
+    if (isNaN(num)) return '—';
     const units = ['B', 'KB', 'MB', 'GB', 'TB'];
     let i = 0;
-    while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
-    return `${n.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+    while (num >= 1024 && i < units.length - 1) { num /= 1024; i++; }
+    return `${num.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
   }
 
   function fmtDate(s) {
