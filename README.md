@@ -7,7 +7,6 @@
 [![Express](https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com)
 [![QEMU](https://img.shields.io/badge/QEMU-Virtualization-FF6600?style=for-the-badge&logo=qemu&logoColor=white)](https://www.qemu.org/)
 [![SQLite](https://img.shields.io/badge/better--sqlite3-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://github.com/WiseLibs/better-sqlite3)
-[![License](https://img.shields.io/badge/License-MIT-6366F1?style=for-the-badge)](LICENSE)
 
 *A high-performance, dark glassmorphic web control panel designed for hosting, managing, and automating QEMU virtual servers.*
 
