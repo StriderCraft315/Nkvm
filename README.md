@@ -1,6 +1,6 @@
 <div align="center">
 
-# ⚡ vPanel Pro v2.0
+# ⚡ Nkvm v1.0
 ### Next-Gen QEMU/KVM Virtual Machine Management Web Panel
 
 [![Node.js](https://img.shields.io/badge/Node.js-v18+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org)
@@ -56,7 +56,7 @@
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│                       vPanel Pro UI                         │
+│                       Nkvm UI                               │
 │   (Glassmorphism CSS • EJS Templates • Socket.IO • Xterm)   │
 └──────────────────────────────┬──────────────────────────────┘
                                │ HTTP / WebSocket (Port 3001)
@@ -66,7 +66,7 @@
 └──────────────┬──────────────────────────────┬───────────────┘
                │                              │
 ┌──────────────▼──────────────┐┌──────────────▼───────────────┐
-│     QEMU Hypervisor Engine  ││     vPanel Guest Agent       │
+│     QEMU Hypervisor Engine  ││     Nkvm Guest Agent         │
 │  (-drive, -smp, -m, -netdev)││  (Python HTTP Daemon / SSH)  │
 └─────────────────────────────┘└──────────────────────────────┘
 ```
@@ -99,8 +99,8 @@ sudo bash install.sh --admin-pass 'your_secure_password'
 
 ```bash
 # 1. Clone repository and install dependencies
-git clone https://github.com/nobita329/vpanel-pro.git
-cd vpanel-pro
+git clone https://github.com/StriderCraft315/Nkvm.git
+cd Nkvm
 npm install
 
 # 2. Build assets
@@ -109,7 +109,7 @@ npm run build
 # 3. Create administrator account
 npm run createuser
 
-# 4. Start vPanel Pro
+# 4. Start Nkvm
 npm start
 ```
 
