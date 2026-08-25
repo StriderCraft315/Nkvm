@@ -87,8 +87,8 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/nobita329/vpanel-pro.git
-cd vpanel-pro
+git clone https://github.com/StriderCraft315/Nkvm.git
+cd Nkvm
 
 # Run the automated installer
 sudo bash install.sh --admin-pass 'your_secure_password'
