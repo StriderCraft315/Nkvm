@@ -181,8 +181,8 @@ AUTO_AGENT_PORT_MAX=26200
 
 ## 📜 License
 
-Distributed under the MIT License. See `LICENSE` for more information.
+Distributed under the Gnu Gpl V3 License. See `LICENSE` for more information.
 
 <div align="center">
-  <sub>Built with ❤️ by <a href="https://github.com/nobita329">Nobita</a> for developers and sysadmins worldwide.</sub>
+  <sub>Built with ❤️ by <a href="https://github.com/StriderCraft315">Michael</a> for developers and sysadmins worldwide.</sub>
 </div>
