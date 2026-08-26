@@ -57,34 +57,50 @@
     </div>
   </div>
 
-  <!-- Host Services & Environment Health -->
-  <div class="card mb-4">
-    <div class="card-title">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-      Host Virtualization Stack
+  <!-- Primary Host Node & Live Telemetry -->
+  <div class="card mb-4" style="padding:20px;border:1px solid var(--accent);background:linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(6, 9, 19, 0.9) 100%)">
+    <div class="flex-between mb-3" style="flex-wrap:wrap;gap:10px">
+      <div class="flex" style="gap:12px;align-items:center">
+        <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg, var(--accent), var(--accent-2));display:grid;place-items:center;color:#fff;box-shadow:0 0 16px var(--accent-glow)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01M6 18h.01"/></svg>
+        </div>
+        <div>
+          <div class="flex" style="gap:8px;align-items:center">
+            <span class="font-bold" style="font-size:16px;color:#fff"><%= nodeStats ? nodeStats.name : 'Primary Host Node' %></span>
+            <span class="pill pill-green font-bold"><span class="pulse-dot"></span> Online</span>
+          </div>
+          <div class="muted text-sm" style="font-size:12px">
+            <%= nodeStats ? nodeStats.hostname : 'localhost' %> · <%= nodeStats ? nodeStats.cpu.model : 'x86_64' %> · <%= nodeStats ? nodeStats.cpu.cores : '4' %> Cores
+          </div>
+        </div>
+      </div>
+      <a href="/admin/nodes" class="btn btn-primary btn-sm">
+        View Node Live Telemetry ↗
+      </a>
     </div>
+
     <div class="grid grid-3" style="gap:14px">
-      <div class="flex" style="background:rgba(0,0,0,0.25);border:1px solid var(--border);border-radius:12px;padding:12px 16px">
+      <div class="flex" style="background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:12px;padding:12px 16px">
         <span class="pill <%= usage.qemu ? 'pill-green' : 'pill-red' %>"><%= usage.qemu ? 'Installed' : 'Missing' %></span>
         <div style="margin-left:8px">
           <div style="font-weight:700">QEMU Hypervisor</div>
-          <div class="muted text-sm" style="font-size:11px">x86_64 virtualization engine</div>
+          <div class="muted text-sm" style="font-size:11px">x86_64 KVM Virtualization Engine</div>
         </div>
       </div>
 
-      <div class="flex" style="background:rgba(0,0,0,0.25);border:1px solid var(--border);border-radius:12px;padding:12px 16px">
+      <div class="flex" style="background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:12px;padding:12px 16px">
         <span class="pill <%= usage.cloudLocalds ? 'pill-green' : 'pill-red' %>"><%= usage.cloudLocalds ? 'Installed' : 'Missing' %></span>
         <div style="margin-left:8px">
-          <div style="font-weight:700">Cloud-Init (cloud-localds)</div>
+          <div style="font-weight:700">Cloud-Init Engine</div>
           <div class="muted text-sm" style="font-size:11px">Seed ISO &amp; metadata generator</div>
         </div>
       </div>
 
-      <div class="flex" style="background:rgba(0,0,0,0.25);border:1px solid var(--border);border-radius:12px;padding:12px 16px">
-        <span class="pill <%= usage.wget ? 'pill-green' : 'pill-red' %>"><%= usage.wget ? 'Installed' : 'Missing' %></span>
+      <div class="flex" style="background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:12px;padding:12px 16px">
+        <span class="pill pill-blue"><%= nodeStats ? nodeStats.vms.running : '0' %> / <%= nodeStats ? nodeStats.vms.total : '0' %> Running</span>
         <div style="margin-left:8px">
-          <div style="font-weight:700">Wget Downloader</div>
-          <div class="muted text-sm" style="font-size:11px">Cloud image streaming client</div>
+          <div style="font-weight:700">Node VM Density</div>
+          <div class="muted text-sm" style="font-size:11px"><%= nodeStats ? nodeStats.vms.allocated_memory_mb : '0' %> MB RAM Allocated</div>
         </div>
       </div>
     </div>

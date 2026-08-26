@@ -25,6 +25,7 @@
         <button class="btn btn-sm btn-green" onclick="action('start')">Start</button>
       <% } %>
       <a class="btn btn-sm" href="/servers/<%= vm.id %>/console">Terminal</a>
+      <a class="btn btn-sm" href="/servers/<%= vm.id %>/console?tab=bootlog">Live Boot Logs</a>
       <button class="btn btn-sm btn-danger" onclick="del()">Delete Server</button>
     </div>
   </div>
@@ -83,7 +84,21 @@
         <table>
           <tbody>
             <tr><td class="muted" style="width:130px">UUID</td><td class="mono"><%= vm.uuid %></td></tr>
-            <tr><td class="muted">Owner</td><td><span class="font-bold"><%= vm.owner_name %></span> &lt;<%= vm.owner_email %>&gt;</td></tr>
+            <tr>
+              <td class="muted">Owner</td>
+              <td>
+                <div class="flex-between">
+                  <div>
+                    <span class="font-bold"><%= vm.owner_name %></span> &lt;<%= vm.owner_email %>&gt;
+                  </div>
+                  <% if (typeof allUsers !== 'undefined' && allUsers.length > 1) { %>
+                    <button type="button" class="btn btn-sm" onclick="openTransferModal()" style="font-size:11.5px;padding:3px 8px">
+                      Transfer Owner
+                    </button>
+                  <% } %>
+                </div>
+              </td>
+            </tr>
             <tr><td class="muted">OS / Codename</td><td><span class="pill pill-blue font-bold"><%= vm.os_type %> <%= vm.codename %></span></td></tr>
             <tr><td class="muted">SSH Command</td><td class="mono">ssh -p <%= vm.ssh_port %> <%= vm.username %>@localhost</td></tr>
             <tr><td class="muted">Terminal</td><td><a href="/servers/<%= vm.id %>/console" class="btn btn-sm">Launch Web Terminal</a></td></tr>
@@ -107,7 +122,7 @@
           <% for (const b of backups.slice(0, 4)) { %>
             <div class="flex-between" style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
               <span class="mono truncate" style="max-width:180px"><%= b.name %></span>
-              <span class="muted"><%= (b.size/1024/1024).toFixed(1) %> MB · <%= new Date(b.created_at).toLocaleDateString() %></span>
+              <span class="muted text-sm"><%= Math.round((b.size || 0)/1024/1024) %> MB</span>
             </div>
           <% } %>
         <% } %>
@@ -115,27 +130,12 @@
 
       <div class="card">
         <div class="flex-between mb-2">
-          <div class="card-title" style="margin:0">Automation Schedules (<%= schedules.length %>)</div>
-          <a href="/servers/<%= vm.id %>/schedules" class="btn btn-sm">Manage</a>
-        </div>
-        <% if (schedules.length === 0) { %><div class="muted text-sm">No automated schedules configured</div><% } else { %>
-          <% for (const s of schedules.slice(0, 4)) { %>
-            <div class="flex-between" style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
-              <span style="font-weight:600"><%= s.name %></span>
-              <span class="mono muted"><%= s.cron %> · <%= s.action %></span>
-            </div>
-          <% } %>
-        <% } %>
-      </div>
-
-      <div class="card">
-        <div class="flex-between mb-2">
-          <div class="card-title" style="margin:0">Assigned Subusers (<%= subs.length %>)</div>
+          <div class="card-title" style="margin:0">Subusers (<%= subs.length %>)</div>
           <a href="/servers/<%= vm.id %>/subusers" class="btn btn-sm">Manage</a>
         </div>
-        <% if (subs.length === 0) { %><div class="muted text-sm">No subusers assigned to this VM</div><% } else { %>
+        <% if (subs.length === 0) { %><div class="muted text-sm">No subusers assigned to this server</div><% } else { %>
           <% for (const s of subs) { %>
-            <div class="flex-between" style="padding:6px 0;border-bottom:1px solid var(--border);font-size:13px">
+            <div class="flex-between" style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
               <span style="font-weight:600"><%= s.username %></span>
             </div>
           <% } %>
@@ -144,10 +144,70 @@
     </div>
   </div>
 </div>
+
+<!-- Transfer Ownership Modal -->
+<% if (typeof allUsers !== 'undefined' && allUsers.length > 1) { %>
+<div id="transferModal" style="display:none">
+  <div style="position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:200;display:grid;place-items:center;padding:20px;backdrop-filter:blur(8px)">
+    <div class="card" style="width:min(460px,94vw);box-shadow:0 24px 60px rgba(0,0,0,0.6)">
+      <div class="flex-between mb-3">
+        <h3 style="font-size:18px;font-weight:700;margin:0">Transfer Server Ownership</h3>
+        <button type="button" class="btn btn-sm" onclick="closeTransferModal()">✕</button>
+      </div>
+      <p class="muted text-sm mb-3">Transfer ownership of <strong><%= vm.name %></strong> to another registered user account.</p>
+      
+      <div class="form-group mb-4">
+        <label>Select New Owner</label>
+        <select id="transferOwnerSelect" style="width:100%;padding:10px;border-radius:8px">
+          <% for (const u of allUsers) { %>
+            <option value="<%= u.id %>" <%= u.id === vm.owner_id ? 'selected disabled' : '' %>>
+              <%= u.username %> (<%= u.email %>) <%= u.id === vm.owner_id ? '— Current Owner' : '' %>
+            </option>
+          <% } %>
+        </select>
+      </div>
+
+      <div class="flex right" style="gap:8px">
+        <button type="button" class="btn" onclick="closeTransferModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="submitTransfer()">Confirm Transfer</button>
+      </div>
+    </div>
+  </div>
+</div>
+<% } %>
+
 <%- include('../partials/music') %>
 <%- include('../partials/foot') %>
 
 <script>
+function openTransferModal() {
+  const m = document.getElementById('transferModal');
+  if (m) m.style.display = 'block';
+}
+
+function closeTransferModal() {
+  const m = document.getElementById('transferModal');
+  if (m) m.style.display = 'none';
+}
+
+async function submitTransfer() {
+  const sel = document.getElementById('transferOwnerSelect');
+  if (!sel || !sel.value) return;
+  try {
+    const res = await fetch('/admin/servers/<%= vm.id %>/transfer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + vpToken() },
+      body: JSON.stringify({ owner_id: sel.value })
+    });
+    const d = await res.json();
+    if (!res.ok || !d.ok) throw new Error(d.error || 'Failed to transfer VM');
+    VP.toast('Ownership transferred successfully', 'success');
+    setTimeout(() => location.reload(), 700);
+  } catch (e) {
+    VP.toast(e.message, 'error');
+  }
+}
+
 async function action(a) {
   try {
     VP.toast(`Executing ${a}...`, 'info');

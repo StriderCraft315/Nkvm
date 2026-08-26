@@ -114,17 +114,31 @@ function ensureVncPort(vm) {
   return port;
 }
 
+function hasKvm() {
+  if (process.env.NO_KVM === '1' || process.env.NOKVM === '1') return false;
+  try {
+    if (!fs.existsSync('/dev/kvm')) return false;
+    fs.accessSync('/dev/kvm', fs.constants.R_OK | fs.constants.W_OK);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 function buildQemuArgs(vm) {
   const dir = vmDir(vm);
   const img = vm.img_file || path.join(dir, 'disk.qcow2');
   const seed = vm.seed_file || path.join(dir, 'seed.iso');
   const fwds = parseForwards(vm.port_forwards);
+  const kvmAvailable = hasKvm();
+  const accelMode = kvmAvailable ? 'kvm:tcg' : 'tcg';
+  const cpuType = kvmAvailable ? 'host' : 'qemu64';
 
   const args = [
     '-m', String(vm.memory),
     '-smp', String(vm.cpus),
-    '-cpu', 'qemu64',
-    '-machine', 'type=pc,accel=tcg',
+    '-cpu', cpuType,
+    '-machine', `type=pc,accel=${accelMode}`,
     '-drive', `file=${img},format=qcow2,if=virtio`,
     '-drive', `file=${seed},format=raw,if=virtio`,
     '-boot', 'order=c',
@@ -184,6 +198,19 @@ function getBootLog(vm) {
     } catch (_) {}
   }
   return content || '[Boot Log] No boot output recorded yet. Start the server to stream boot logs.';
+}
+
+function clearBootLog(vm) {
+  const dir = vmDir(vm);
+  const bootLog = path.join(dir, 'boot.log');
+  const qemuLog = path.join(dir, 'qemu.log');
+  try {
+    if (fs.existsSync(bootLog)) fs.writeFileSync(bootLog, '', 'utf8');
+    if (fs.existsSync(qemuLog)) fs.writeFileSync(qemuLog, '', 'utf8');
+    return true;
+  } catch (_) {
+    return false;
+  }
 }
 
 function pidOf(vm) {
@@ -310,6 +337,8 @@ function writeSeed(vm) {
   fs.writeFileSync(
     path.join(dir, 'user-data'),
     `#cloud-config
+output:
+  all: '| tee -a /dev/ttyS0 /dev/console'
 hostname: ${vm.hostname || vm.name}
 ssh_pwauth: true
 disable_root: false
@@ -464,6 +493,11 @@ async function start(vm, { user = null } = {}) {
   ensureVncPort(vm);
   ensureAgentPort(vm);
   const dir = vmDir(vm);
+  const bootLogPath = path.join(dir, 'boot.log');
+  const sessionHeader = `\r\n=== [vPanel] Starting VM "${vm.name}" at ${new Date().toISOString()} ===\r\n\r\n`;
+  try {
+    fs.appendFileSync(bootLogPath, sessionHeader, 'utf8');
+  } catch (_) {}
   const logFile = fs.openSync(path.join(dir, 'qemu.log'), 'a');
   const args = buildQemuArgs(vm);
   logger.info(`[vm] starting ${vm.name}: qemu-system-x86_64 ${args.join(' ')}`);
@@ -529,7 +563,7 @@ function remove(vm, user) {
 }
 
 function update(vm, data, user) {
-  const fields = ['name', 'hostname', 'username', 'password', 'memory', 'cpus', 'disk_size', 'gui_mode', 'port_forwards', 'start_on_boot', 'startup_command', 'notes', 'startup_command'];
+  const fields = ['name', 'hostname', 'username', 'password', 'memory', 'cpus', 'disk_size', 'gui_mode', 'port_forwards', 'start_on_boot', 'startup_command', 'notes', 'owner_id'];
   const set = [];
   const vals = {};
   for (const f of fields) {
@@ -537,6 +571,7 @@ function update(vm, data, user) {
       set.push(`${f} = @${f}`);
       if (f === 'port_forwards' && Array.isArray(data[f])) vals[f] = JSON.stringify(data[f]);
       else if (f === 'gui_mode' || f === 'start_on_boot') vals[f] = data[f] ? 1 : 0;
+      else if (f === 'owner_id') vals[f] = parseInt(data[f], 10);
       else vals[f] = data[f];
     }
   }
@@ -548,6 +583,14 @@ function update(vm, data, user) {
   const needSeed = ['hostname', 'username', 'password'].some((f) => data[f] !== undefined);
   if (needSeed) writeSeed(vm);
   logActivity({ user_id: user ? user.id : null, vm_id: vm.id, event: 'vm:update', details: data });
+  return getVm(vm.id);
+}
+
+function transferOwner(vm, newOwnerId, actor) {
+  const targetUser = db.prepare('SELECT * FROM users WHERE id = ?').get(newOwnerId);
+  if (!targetUser) throw new Error('Target user not found');
+  db.prepare('UPDATE vms SET owner_id = ?, updated_at = ? WHERE id = ?').run(targetUser.id, now(), vm.id);
+  logActivity({ user_id: actor ? actor.id : null, vm_id: vm.id, event: 'vm:transfer_owner', details: { from: vm.owner_id, to: targetUser.id, target_username: targetUser.username } });
   return getVm(vm.id);
 }
 
@@ -602,8 +645,80 @@ function startOnBootAll() {
   }
 }
 
+function cpuUsage(vm) {
+  const pid = pidOf(vm);
+  if (!pid) return 0;
+  try {
+    const out = execSync(`ps -o %cpu= -p ${pid}`, { encoding: 'utf8' }).trim();
+    return Math.round((parseFloat(out) || 0) * 10) / 10;
+  } catch (_) { return 0; }
+}
+
+function diskActualUsage(vm) {
+  try {
+    if (vm.img_file && fs.existsSync(vm.img_file)) {
+      return fs.statSync(vm.img_file).size;
+    }
+  } catch (_) {}
+  return 0;
+}
+
+function liveStats(vm) {
+  const running = isRunning(vm);
+  const pid = running ? pidOf(vm) : null;
+  const uptime = running ? uptimeSeconds(vm) : 0;
+  const memUsedBytes = running ? memUsage(vm) : 0;
+  const cpuPct = running ? cpuUsage(vm) : 0;
+  const totalMemBytes = (parseInt(vm.memory, 10) || 1024) * 1024 * 1024;
+  const memPct = totalMemBytes > 0 ? Math.min(100, Math.round((memUsedBytes / totalMemBytes) * 100)) : 0;
+  const diskBytes = diskActualUsage(vm);
+  let totalDiskBytes = 20 * 1024 * 1024 * 1024;
+  if (vm.disk_size) {
+    const m = String(vm.disk_size).trim().match(/^(\d+)([GMK]?)$/i);
+    if (m) {
+      const num = parseInt(m[1], 10);
+      const unit = (m[2] || 'G').toUpperCase();
+      if (unit === 'G') totalDiskBytes = num * 1024 * 1024 * 1024;
+      else if (unit === 'M') totalDiskBytes = num * 1024 * 1024;
+      else if (unit === 'K') totalDiskBytes = num * 1024;
+    }
+  }
+  const diskPct = totalDiskBytes > 0 ? Math.min(100, Math.round((diskBytes / totalDiskBytes) * 100)) : 0;
+
+  return {
+    id: vm.id,
+    name: vm.name,
+    status: running ? 'running' : 'stopped',
+    running,
+    pid,
+    uptime,
+    cpu: {
+      percent: cpuPct,
+      cpus: vm.cpus || 1,
+    },
+    memory: {
+      used_bytes: memUsedBytes,
+      used_mb: Math.round(memUsedBytes / 1024 / 1024),
+      total_mb: vm.memory,
+      percent: memPct,
+    },
+    disk: {
+      allocated: vm.disk_size,
+      actual_bytes: diskBytes,
+      actual_mb: Math.round(diskBytes / 1024 / 1024),
+      percent: diskPct,
+    },
+    ports: {
+      ssh: vm.ssh_port,
+      vnc: vm.vnc_port,
+      agent: vm.agent_port,
+    },
+    updated_at: new Date().toISOString(),
+  };
+}
+
 module.exports = {
-  VM_DIR, dbVms, getVm, create, start, stop, restart, remove, update,
+  VM_DIR, vmDir, dbVms, getVm, create, start, stop, restart, remove, update,
   resizeDisk, isRunning, statusOf, serializeVm, canAccess, allocPort, allocVncPort, allocAgentPort,
-  parseForwards, usage, uptimeSeconds, memUsage, totalDiskUsage, startOnBootAll, getOsList, getBootLog,
+  parseForwards, usage, uptimeSeconds, memUsage, cpuUsage, diskActualUsage, liveStats, totalDiskUsage, startOnBootAll, getOsList, getBootLog, clearBootLog, hasKvm, transferOwner,
 };

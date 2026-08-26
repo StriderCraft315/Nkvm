@@ -642,6 +642,11 @@ async function createVm() {
 }
 
 // Initial password & summary setup
+const urlParams = new URLSearchParams(window.location.search);
+const targetOwner = urlParams.get('owner_id');
+if (targetOwner && document.getElementById('fOwner')) {
+  document.getElementById('fOwner').value = targetOwner;
+}
 genPassword();
 updateSummary();
 </script>

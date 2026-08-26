@@ -25,13 +25,31 @@ function render(res, view, vars = {}) {
   });
 }
 
+const nodeService = require('../services/nodeService');
+
 router.get('/admin', (req, res) => {
   const vms = vmService.dbVms().map(vmService.serializeVm);
   const users = db.prepare('SELECT id, username, email, role, suspended, verified, created_at, last_login_at FROM users').all();
   const running = vms.filter((v) => v.status === 'running').length;
   const totalDisk = vms.reduce((a, v) => a + parseInt(v.disk_size || '0'), 0);
   const recentLogs = activity.listActivity({ limit: 12 });
-  render(res, 'dashboard', { vms, users, running, totalDisk, recentLogs, usage: vmService.usage() });
+  const nodeStats = nodeService.getNodeLiveStats();
+  render(res, 'dashboard', { vms, users, running, totalDisk, recentLogs, usage: vmService.usage(), nodeStats });
+});
+
+router.get('/admin/nodes', (req, res) => {
+  const nodeStats = nodeService.getNodeLiveStats();
+  const vms = vmService.dbVms().map(vmService.serializeVm);
+  render(res, 'nodes', { nodeStats, vms });
+});
+
+router.get('/admin/nodes/status', (req, res) => {
+  try {
+    const stats = nodeService.getNodeLiveStats();
+    res.json({ ok: true, stats });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 router.get('/admin/servers', (req, res) => {
@@ -83,13 +101,27 @@ router.post('/admin/servers/:id/action', (req, res) => {
   }
 });
 
+router.post('/admin/servers/:id/transfer', express.json(), (req, res) => {
+  const vm = vmService.getVm(req.params.id);
+  if (!vm) return res.status(404).json({ error: 'Server not found' });
+  const { owner_id } = req.body;
+  if (!owner_id) return res.status(400).json({ error: 'Owner ID is required' });
+  try {
+    const updated = vmService.transferOwner(vm, parseInt(owner_id, 10), req.user);
+    res.json({ ok: true, vm: vmService.serializeVm(updated) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 router.get('/admin/servers/:id', (req, res) => {
   const vm = vmService.getVm(req.params.id);
   if (!vm) return res.status(404).render('error/404', { code: 404, title: 'Not Found', message: 'Server not found', settings: settings.all(), user: req.user });
   const backups = backupService.listForVm(vm.id);
   const schedules = db.prepare('SELECT * FROM schedules WHERE vm_id = ?').all(vm.id);
   const subs = db.prepare('SELECT s.*, u.username FROM subusers s JOIN users u ON u.id = s.user_id WHERE s.vm_id = ?').all(vm.id);
-  render(res, 'serverDetail', { vm, backups, schedules, subs, uptime: vmService.uptimeSeconds(vm), mem: vmService.memUsage(vm) });
+  const allUsers = db.prepare('SELECT id, username, email FROM users ORDER BY username').all();
+  render(res, 'serverDetail', { vm, backups, schedules, subs, allUsers, uptime: vmService.uptimeSeconds(vm), mem: vmService.memUsage(vm) });
 });
 
 router.get('/admin/users', (req, res) => {
@@ -105,9 +137,25 @@ router.get('/admin/users/:id', (req, res) => {
   const target = authService.findById(req.params.id);
   if (!target) return res.redirect('/admin/users');
   const vms = db.prepare('SELECT * FROM vms WHERE owner_id = ?').all(target.id).map(vmService.serializeVm);
+  const otherVms = db.prepare('SELECT v.*, u.username as owner_username FROM vms v JOIN users u ON u.id = v.owner_id WHERE v.owner_id != ? ORDER BY v.name').all(target.id).map(vmService.serializeVm);
   const loginHistory = activity.listLoginHistory({ user_id: target.id, limit: 100 });
   const logs = activity.listActivity({ user_id: target.id, limit: 100 });
-  render(res, 'userDetail', { target: authService.publicUser(target), vms, loginHistory, logs });
+  render(res, 'userDetail', { target: authService.publicUser(target), vms, otherVms, loginHistory, logs });
+});
+
+router.post('/admin/users/:id/assign-vm', express.json(), (req, res) => {
+  const target = authService.findById(req.params.id);
+  if (!target) return res.status(404).json({ error: 'User not found' });
+  const { vm_id } = req.body;
+  if (!vm_id) return res.status(400).json({ error: 'VM ID is required' });
+  const vm = vmService.getVm(vm_id);
+  if (!vm) return res.status(404).json({ error: 'Server not found' });
+  try {
+    vmService.transferOwner(vm, target.id, req.user);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 router.post('/admin/users/create', express.json(), (req, res) => {

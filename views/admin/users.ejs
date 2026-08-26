@@ -61,7 +61,11 @@
                 <span class="pill pill-blue font-bold">User</span>
               <% } %>
             </td>
-            <td><span class="pill pill-gray font-bold"><%= u.vm_count || 0 %> VMs</span></td>
+            <td>
+              <a href="/admin/users/<%= u.id %>" class="pill <%= u.vm_count > 0 ? 'pill-blue' : 'pill-gray' %> font-bold" style="text-decoration:none" title="View VMs for <%= u.username %>">
+                <%= u.vm_count || 0 %> VMs
+              </a>
+            </td>
             <td>
               <span class="pill <%= u.suspended ? 'pill-red' : 'pill-green' %>">
                 <%= u.suspended ? 'Suspended' : 'Active' %>
@@ -75,7 +79,10 @@
             <td class="muted text-sm"><%= u.last_login_at ? new Date(u.last_login_at).toLocaleString() : 'Never' %></td>
             <td class="right">
               <div class="flex right" style="gap:6px">
-                <a class="btn btn-sm" href="/admin/users/<%= u.id %>">View</a>
+                <a class="btn btn-sm btn-primary" href="/admin/servers/create?owner_id=<%= u.id %>" title="Deploy new VM for <%= u.username %>">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13" style="vertical-align:-1px;margin-right:2px"><path d="M12 5v14M5 12h14"/></svg>+ VM
+                </a>
+                <a class="btn btn-sm" href="/admin/users/<%= u.id %>">Manage</a>
                 <% if (u.suspended) { %>
                   <button class="btn btn-sm btn-green" onclick="suspend(<%= u.id %>, false)">Unsuspend</button>
                 <% } else { %>
