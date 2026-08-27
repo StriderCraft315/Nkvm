@@ -43,14 +43,14 @@ const iconKey = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stro
   <% } %>
 
   <div class="nav-section-title">Personalization</div>
-  <a href="javascript:void(0)" onclick="openCustomizationModal()" class="nav-link"><span class="v-icon"><%- iconPalette %></span><span>Theme &amp; Wallpapers</span></a>
   <a href="/profile" class="nav-link <%= act('profile', page) %>"><span class="v-icon"><%- iconUser %></span><span>Profile</span></a>
   <a href="/settings" class="nav-link <%= act('userSettings', page) %>"><span class="v-icon"><%- iconSettings %></span><span>Settings</span></a>
   <a href="/activity" class="nav-link <%= act('activity', page) %>"><span class="v-icon"><%- iconActivity %></span><span>Activity</span></a>
 
   <% if (isAdmin) { %>
   <div class="nav-section-title">Admin Dashboard</div>
-  <a href="/admin" class="nav-link <%= act('admin-dashboard', page) %>"><span class="v-icon"><%- iconServer %></span><span>Overview</span></a>
+  <a href="/admin" class="nav-link <%= act('admin-dashboard', page) %>"><span class="v-icon"><%- iconHome %></span><span>Overview</span></a>
+  <a href="/admin/nodes" class="nav-link <%= act('admin-nodes', page) %>"><span class="v-icon"><%- iconServer %></span><span>Nodes &amp; Live Status</span></a>
   <a href="/admin/servers" class="nav-link <%= act('admin-servers', page) %>"><span class="v-icon"><%- iconServer %></span><span>Server Management</span></a>
   <a href="/admin/servers/create" class="nav-link <%= act('admin-create', page) %>"><span class="v-icon"><%- iconPlus %></span><span>Create Server</span></a>
   <a href="/admin/users" class="nav-link <%= act('admin-users', page) %>"><span class="v-icon"><%- iconUsers %></span><span>User Management</span></a>

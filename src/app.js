@@ -10,6 +10,7 @@ const { settings } = require('./lib/db');
 const { getUserFromReq } = require('./middleware/auth');
 const vmService = require('./services/vmService');
 const sshService = require('./services/sshService');
+const bootLogService = require('./services/bootLogService');
 const scheduleService = require('./services/scheduleService');
 const activity = require('./services/activityService');
 const { attachVncProxy } = require('./services/vncService');
@@ -94,26 +95,76 @@ function attachConsoleSocket(io) {
 
   io.on('connection', (socket) => {
     socket.on('console:join', ({ vmId }) => {
+      // Cancel previous pending join
+      socket.data.isLeaving = false;
+
+      // Clean up any existing stream on this socket
+      if (socket.data.stream) {
+        try { socket.data.stream.end(); } catch (_) {}
+        socket.data.stream = null;
+      }
+      if (socket.data.conn) {
+        try { socket.data.conn.end(); } catch (_) {}
+        socket.data.conn = null;
+      }
+
       const vm = vmService.getVm(parseInt(vmId, 10));
       if (!vm || !vmService.canAccess(socket.data.user, vm, 'console')) {
         socket.emit('console:error', 'Access denied or server not found');
         return;
       }
       if (!vmService.isRunning(vm)) {
-        socket.emit('console:error', 'Server is not running. Start it first.');
+        socket.emit('console:offline');
         return;
       }
-      sshService.shellStream(vm)
+
+      sshService.shellStreamWithRetry(vm, {
+        maxRetries: 30,
+        retryDelay: 1500,
+        shouldContinue: () => socket.connected && !socket.data.isLeaving && vmService.isRunning(vm),
+      })
         .then(({ conn, stream }) => {
+          if (socket.data.isLeaving || !socket.connected) {
+            try { stream.end(); } catch (_) {}
+            try { conn.end(); } catch (_) {}
+            return;
+          }
           socket.data.stream = stream;
           socket.data.conn = conn;
           socket.emit('console:ready', { cols: socket.data.cols || 80, rows: socket.data.rows || 24 });
           stream.on('data', (d) => socket.emit('console:data', d.toString('utf8')));
-          stream.on('close', () => { socket.emit('console:close'); });
-          stream.on('error', () => socket.emit('console:close'));
+          stream.on('close', () => {
+            socket.emit('console:close');
+            socket.data.stream = null;
+            socket.data.conn = null;
+          });
+          stream.on('error', () => {
+            socket.emit('console:close');
+            socket.data.stream = null;
+            socket.data.conn = null;
+          });
           stream.setWindow(socket.data.rows || 24, socket.data.cols || 80);
         })
-        .catch((e) => socket.emit('console:error', 'SSH connection failed: ' + e.message));
+        .catch((e) => {
+          if (socket.data.isLeaving || !socket.connected) return;
+          if (!vmService.isRunning(vm)) {
+            socket.emit('console:offline');
+          } else {
+            socket.emit('console:error', 'SSH connection failed: ' + e.message);
+          }
+        });
+    });
+
+    socket.on('console:leave', () => {
+      socket.data.isLeaving = true;
+      if (socket.data.stream) {
+        try { socket.data.stream.end(); } catch (_) {}
+        socket.data.stream = null;
+      }
+      if (socket.data.conn) {
+        try { socket.data.conn.end(); } catch (_) {}
+        socket.data.conn = null;
+      }
     });
 
     socket.on('console:input', (data) => {
@@ -126,9 +177,59 @@ function attachConsoleSocket(io) {
       if (socket.data.stream) socket.data.stream.setWindow(rows, cols);
     });
 
+    socket.on('bootlog:join', ({ vmId }) => {
+      const vm = vmService.getVm(parseInt(vmId, 10));
+      if (!vm || !vmService.canAccess(socket.data.user, vm, 'console')) {
+        socket.emit('bootlog:error', 'Access denied or server not found');
+        return;
+      }
+      if (socket.data.bootLogStream) {
+        socket.data.bootLogStream.close();
+        socket.data.bootLogStream = null;
+      }
+      socket.emit('bootlog:ready', {
+        vmId: vm.id,
+        status: vm.status,
+        isRunning: vmService.isRunning(vm),
+      });
+      socket.data.bootLogStream = bootLogService.createBootLogStream(vm, {
+        onData: (text, meta) => {
+          socket.emit('bootlog:data', {
+            text,
+            init: !!meta.init,
+            source: meta.source || 'boot',
+            vmId: vm.id,
+          });
+        },
+        onError: (e) => socket.emit('bootlog:error', e.message),
+        onClose: () => socket.emit('bootlog:close', { vmId: vm.id }),
+      });
+    });
+
+    socket.on('bootlog:leave', () => {
+      if (socket.data.bootLogStream) {
+        socket.data.bootLogStream.close();
+        socket.data.bootLogStream = null;
+      }
+    });
+
+    socket.on('bootlog:clear', ({ vmId }) => {
+      const vm = vmService.getVm(parseInt(vmId, 10));
+      if (!vm || !vmService.canAccess(socket.data.user, vm, 'console')) {
+        socket.emit('bootlog:error', 'Access denied or server not found');
+        return;
+      }
+      bootLogService.clearBootLogs(vm);
+      socket.emit('bootlog:cleared', { vmId: vm.id });
+    });
+
     socket.on('disconnect', () => {
       if (socket.data.stream) socket.data.stream.end();
       if (socket.data.conn) socket.data.conn.end();
+      if (socket.data.bootLogStream) {
+        socket.data.bootLogStream.close();
+        socket.data.bootLogStream = null;
+      }
     });
   });
 }
@@ -150,7 +251,12 @@ function bootstrap() {
   const apiApp = createApiApp();
 
   const webServer = http.createServer(webApp);
-  const io = new Server(webServer, { maxHttpBufferSize: 1e7 });
+  const io = new Server(webServer, {
+    maxHttpBufferSize: 1e7,
+    pingInterval: 10000,
+    pingTimeout: 25000,
+    cors: { origin: '*' }
+  });
   attachConsoleSocket(io);
   attachVncProxy(webServer);
 

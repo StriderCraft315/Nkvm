@@ -41,15 +41,13 @@ router.post('/login', express.urlencoded({ extended: true }), (req, res) => {
 
 router.get('/register', (req, res) => {
   if (req.user) return res.redirect('/dashboard');
-  if (settings.get('security.allow_register') !== '1') {
-    return render(res, 'register', { error: 'Registration is disabled by the administrator' });
-  }
-  render(res, 'register');
+  const allowed = settings.get('security.allow_register') !== '0';
+  render(res, 'register', { allowed });
 });
 
 router.post('/register', express.urlencoded({ extended: true }), (req, res) => {
-  if (settings.get('security.allow_register') !== '1') {
-    return render(res, 'register', { error: 'Registration is disabled by the administrator' });
+  if (settings.get('security.allow_register') === '0') {
+    return render(res, 'register', { error: 'Registration is disabled by the administrator', allowed: false });
   }
   const { username, email, password, name, password2 } = req.body;
   if (password !== password2) return render(res, 'register', { error: 'Passwords do not match', username, email, name });

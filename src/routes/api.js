@@ -1,6 +1,7 @@
 const express = require('express');
 const authService = require('../services/authService');
 const vmService = require('../services/vmService');
+const bootLogService = require('../services/bootLogService');
 const backupService = require('../services/backupService');
 const scheduleService = require('../services/scheduleService');
 const agentService = require('../services/agentService');
@@ -28,7 +29,7 @@ router.post('/auth/login', json, (req, res) => {
 });
 
 router.post('/auth/register', json, (req, res) => {
-  if (settings.get('security.allow_register') !== '1') return res.status(403).json({ error: 'Registration disabled' });
+  if (settings.get('security.allow_register') === '0') return res.status(403).json({ error: 'Registration disabled' });
   try {
     const user = authService.createUser({
       username: String(req.body.username || '').trim(),
@@ -109,6 +110,10 @@ function loadVm(req, res, next) {
 }
 
 router.get('/vms', (req, res) => {
+  if (req.user.role === 'admin' || req.user.root_admin) {
+    const all = db.prepare('SELECT v.*, u.username as owner_username, u.email as owner_email FROM vms v JOIN users u ON u.id = v.owner_id ORDER BY v.id DESC').all().map(vmService.serializeVm);
+    return res.json({ vms: all });
+  }
   const mine = db.prepare('SELECT * FROM vms WHERE owner_id = ?').all(req.user.id).map(vmService.serializeVm);
   const shared = db.prepare(
     'SELECT v.* FROM subusers s JOIN vms v ON v.id = s.vm_id WHERE s.user_id = ?'
@@ -138,15 +143,23 @@ router.post('/vms/:id/restart', loadVm, async (req, res) => {
   try { await vmService.restart(req.vm, req.user); res.json({ ok: true }); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
-router.get('/vms/:id/status', loadVm, (req, res) => {
-  res.json({ id: req.vm.id, status: req.vm.status, uptime: vmService.uptimeSeconds(req.vm), mem: vmService.memUsage(req.vm) });
+router.get(['/vms/:id/status', '/vms/:id/stats'], loadVm, (req, res) => {
+  const stats = vmService.liveStats(req.vm);
+  res.json({ ok: true, id: req.vm.id, status: stats.status, uptime: stats.uptime, mem: stats.memory.used_bytes, ...stats });
 });
 router.get('/vms/:id/bootlog', loadVm, (req, res) => {
   res.json({ ok: true, log: vmService.getBootLog(req.vm) });
 });
+router.get('/vms/:id/bootlog/stream', loadVm, (req, res) => {
+  bootLogService.handleSseStream(req, res, req.vm);
+});
+router.post('/vms/:id/bootlog/clear', loadVm, (req, res) => {
+  bootLogService.clearBootLogs(req.vm);
+  res.json({ ok: true });
+});
 router.delete('/vms/:id', loadVm, (req, res) => {
   try {
-    if (req.vm.owner_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+    if (req.vm.owner_id !== req.user.id && req.user.role !== 'admin' && !req.user.root_admin) return res.status(403).json({ error: 'Forbidden' });
     vmService.remove(req.vm, req.user);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -324,9 +337,11 @@ router.post('/wallpapers/apply', json, (req, res) => {
       if (mode === 'video') {
         settings.set('panel.bg_mode', 'video');
         settings.set('panel.bg_video_url', url);
+        settings.set('panel.bg_video_file', '');
       } else {
         settings.set('panel.bg_mode', 'image');
         settings.set('panel.bg_url', url);
+        settings.set('panel.bg_file', '');
       }
     }
     if (overlay !== undefined) settings.set('panel.bg_overlay', String(overlay));
@@ -349,6 +364,15 @@ router.post('/customization/save', json, (req, res) => {
       if (req.body[k] !== undefined) settings.set(k, String(req.body[k]));
     }
     res.json({ ok: true, message: 'Customization saved', settings: settings.all() });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+router.get('/admin/nodes/status', (req, res) => {
+  try {
+    const nodeService = require('../services/nodeService');
+    res.json({ ok: true, stats: nodeService.getNodeLiveStats() });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }

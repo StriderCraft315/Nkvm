@@ -28,6 +28,8 @@ function connect(vm, { readyTimeout = 10000 } = {}) {
       username: vm.username,
       password: vm.password,
       readyTimeout,
+      keepaliveInterval: 5000,
+      keepaliveCountMax: 10,
     });
   });
 }
@@ -67,6 +69,24 @@ function shellStream(vm) {
       });
     });
   });
+}
+
+async function shellStreamWithRetry(vm, { maxRetries = 25, retryDelay = 2000, shouldContinue = () => true } = {}) {
+  let lastErr;
+  for (let i = 0; i < maxRetries; i++) {
+    if (!shouldContinue()) {
+      throw new Error('Connection cancelled');
+    }
+    try {
+      return await shellStream(vm);
+    } catch (err) {
+      lastErr = err;
+      if (i < maxRetries - 1 && shouldContinue()) {
+        await new Promise((r) => setTimeout(r, retryDelay));
+      }
+    }
+  }
+  throw lastErr || new Error('SSH connection timed out');
 }
 
 function statLineToFile(line, base) {
@@ -195,6 +215,6 @@ function downloadBuffer(conn, remotePath) {
 }
 
 module.exports = {
-  connect, exec, withExec, shellStream, listDir, readFile, writeFile,
+  connect, exec, withExec, shellStream, shellStreamWithRetry, listDir, readFile, writeFile,
   mkdir, rm, rename, chmod, uploadBuffer, downloadBuffer,
 };

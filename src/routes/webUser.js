@@ -4,6 +4,7 @@ const qrcode = require('qrcode');
 const config = require('../lib/config');
 const { db, settings } = require('../lib/db');
 const vmService = require('../services/vmService');
+const bootLogService = require('../services/bootLogService');
 const backupService = require('../services/backupService');
 const authService = require('../services/authService');
 const activity = require('../services/activityService');
@@ -36,6 +37,11 @@ function loadVm(req, res, next) {
       settings: settings.all(), user: req.user,
     });
   }
+  const owner = db.prepare('SELECT username, email FROM users WHERE id = ?').get(vm.owner_id);
+  if (owner) {
+    vm.owner_name = owner.username;
+    vm.owner_email = owner.email;
+  }
   req.vm = vm;
   next();
 }
@@ -51,11 +57,21 @@ router.get('/dashboard', (req, res) => {
 });
 
 router.get('/servers/:id', loadVm, (req, res) => {
-  render(res, 'server/overview', { vm: req.vm, backups: backupService.listForVm(req.vm.id) });
+  const allUsers = (req.user.role === 'admin' || req.user.root_admin)
+    ? db.prepare('SELECT id, username, email FROM users ORDER BY username').all()
+    : [];
+  render(res, 'server/overview', { vm: req.vm, backups: backupService.listForVm(req.vm.id), allUsers });
 });
 
 router.get('/servers/:id/overview', loadVm, (req, res) => {
-  render(res, 'server/overview', { vm: req.vm, backups: backupService.listForVm(req.vm.id) });
+  const allUsers = (req.user.role === 'admin' || req.user.root_admin)
+    ? db.prepare('SELECT id, username, email FROM users ORDER BY username').all()
+    : [];
+  render(res, 'server/overview', { vm: req.vm, backups: backupService.listForVm(req.vm.id), allUsers });
+});
+
+router.get('/servers/:id/status', loadVm, (req, res) => {
+  res.json({ ok: true, stats: vmService.liveStats(req.vm) });
 });
 
 router.get('/servers/:id/console', loadVm, (req, res) => {
@@ -64,6 +80,15 @@ router.get('/servers/:id/console', loadVm, (req, res) => {
 
 router.get('/servers/:id/bootlog', loadVm, (req, res) => {
   res.json({ ok: true, log: vmService.getBootLog(req.vm) });
+});
+
+router.get('/servers/:id/bootlog/stream', loadVm, (req, res) => {
+  bootLogService.handleSseStream(req, res, req.vm);
+});
+
+router.post('/servers/:id/bootlog/clear', loadVm, (req, res) => {
+  bootLogService.clearBootLogs(req.vm);
+  res.json({ ok: true });
 });
 
 router.get('/servers/:id/files', loadVm, (req, res) => {
@@ -231,6 +256,20 @@ router.post('/servers/:id/subusers/:sid/delete', loadVm, (req, res) => {
   }
 });
 
+router.post('/servers/:id/transfer', loadVm, express.json(), (req, res) => {
+  if (req.user.role !== 'admin' && !req.user.root_admin && req.vm.owner_id !== req.user.id) {
+    return res.status(403).json({ error: 'Only server owner or administrators can transfer ownership' });
+  }
+  const { owner_id } = req.body;
+  if (!owner_id) return res.status(400).json({ error: 'Owner ID is required' });
+  try {
+    const updated = vmService.transferOwner(req.vm, parseInt(owner_id, 10), req.user);
+    res.json({ ok: true, vm: vmService.serializeVm(updated) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 router.post('/servers/:id/delete', loadVm, (req, res) => {
   if (req.vm.owner_id !== req.user.id && req.user.role !== 'admin') {
     return res.status(403).json({ error: 'Only the owner can delete this server' });
@@ -285,6 +324,7 @@ router.post('/profile/password', express.json(), (req, res) => {
 });
 
 router.get('/settings', (req, res) => render(res, 'userSettings', { tfaSetup: null }));
+router.get('/user-settings', (req, res) => res.redirect('/settings'));
 router.post('/settings', express.urlencoded({ extended: true }), (req, res) => {
   try {
     const data = {};

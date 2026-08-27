@@ -26,11 +26,6 @@ else if (settings['panel.logo_mode'] === 'url' && settings['panel.logo_url']) lo
         <input type="search" placeholder="Search servers..." id="globalSearch" autocomplete="off"/>
       </div>
 
-      <button class="btn btn-sm" onclick="openCustomizationModal()" title="Customize Appearance & 4K Wallpapers" style="display:flex;align-items:center;gap:6px">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 10 10 0 0 0 9.54-13.88A10 10 0 0 0 12 2z"/></svg>
-        <span class="hide-mobile">Theme &amp; Wallpapers</span>
-      </button>
-
       <% if (user.role === 'admin' || user.root_admin) { %>
         <a class="btn btn-sm btn-primary hide-mobile" href="/admin/servers/create" style="box-shadow:none">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M12 5v14M5 12h14"/></svg>

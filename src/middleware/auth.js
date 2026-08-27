@@ -2,20 +2,29 @@ const authService = require('../services/authService');
 const { settings } = require('../lib/db');
 
 function getUserFromReq(req) {
-  let token = req.cookies ? req.cookies.token : null;
-  if (!token && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
-    token = req.headers.authorization.slice(7);
+  const candidates = [];
+  if (req.headers && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+    const t = req.headers.authorization.slice(7).trim();
+    if (t && t !== 'undefined' && t !== 'null' && t !== '[object Object]') candidates.push(t);
   }
-  if (!token && req.query && req.query.token) {
-    token = req.query.token;
+  if (req.cookies && req.cookies.token) {
+    const t = String(req.cookies.token).trim();
+    if (t && t !== 'undefined' && t !== 'null') candidates.push(t);
   }
-  if (!token) return null;
-  const payload = authService.verifyToken(token);
-  if (!payload) return null;
-  const user = authService.findById(Number(payload.sub));
-  if (!user) return null;
-  if (user.suspended) return null;
-  return user;
+  if (req.query && req.query.token) {
+    const t = String(req.query.token).trim();
+    if (t && t !== 'undefined' && t !== 'null') candidates.push(t);
+  }
+
+  for (const token of candidates) {
+    try {
+      const payload = authService.verifyToken(token);
+      if (!payload || !payload.sub) continue;
+      const user = authService.findById(Number(payload.sub));
+      if (user && !user.suspended) return user;
+    } catch (_) {}
+  }
+  return null;
 }
 
 function requireAuth(req, res, next) {
